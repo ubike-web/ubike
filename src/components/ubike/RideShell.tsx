@@ -34,7 +34,6 @@ export default function RideShell() {
   const [rating, setRating] = useState(0);
   const [rideRequests, setRideRequests] = useState(MOCK_REQUESTS);
 
-  const heroImage = PlaceHolderImages.find(img => img.id === 'hero-motorbike');
   const distance = pickup && destination ? 5.2 : 0;
   const estimatedFare = calculateFare(distance, rideType);
 
@@ -77,22 +76,17 @@ export default function RideShell() {
 
   return (
     <div className="relative min-h-screen flex flex-col bg-white overflow-hidden">
-      {/* Enhanced Hero Background Section */}
+      {/* Premium Charcoal Hero Background Section */}
       {state === 'LANDING' && (
-        <div className="absolute inset-0 z-0 bg-[#2E2B26] overflow-hidden">
-          <div className="relative w-full h-full scale-105 animate-breathing">
-            <Image
-              src={heroImage?.imageUrl || "https://picsum.photos/seed/boda-boxer-premium/1920/1080"}
-              alt="Local Motorbike"
-              fill
-              className="object-cover opacity-30 blur-sm"
-              priority
-              data-ai-hint="motorbike"
-            />
-          </div>
-          {/* Charcoal Overlay Layers for contrast */}
-          <div className="absolute inset-0 bg-black/20 z-10" />
-          <div className="absolute inset-0 bg-gradient-to-b from-[#2E2B26]/60 via-transparent to-[#2E2B26] z-20" />
+        <div className="absolute inset-0 z-0 bg-[#1A1A1A] overflow-hidden">
+          {/* Subtle Radial Lighting (Center slightly lighter, warm charcoal) */}
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_40%,rgba(52,50,48,1)_0%,rgba(26,25,24,1)_100%)]" />
+          
+          {/* Vignette Overlay (Darker edges for depth) */}
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_0%,rgba(0,0,0,0.6)_100%)] z-10" />
+          
+          {/* Subtle Breathing Glow (Orange hint for brand consistency) */}
+          <div className="absolute inset-0 opacity-10 bg-[radial-gradient(circle_at_50%_40%,rgba(255,102,0,0.06)_0%,transparent_70%)] animate-pulse-subtle" />
         </div>
       )}
 
