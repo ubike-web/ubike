@@ -75,23 +75,31 @@ export default function RideShell() {
   return (
     <div className="relative min-h-screen flex flex-col overflow-hidden">
       {/* Navigation */}
-      <nav className={cn(
-        "relative z-50 flex items-center justify-between px-8 py-6 w-full max-w-7xl mx-auto transition-colors duration-500",
-        "text-foreground"
-      )}>
-        <Logo className="h-10 cursor-pointer" onClick={() => setState('LANDING')} />
-        <div className="flex items-center gap-8">
-          <button className="text-sm font-medium hover:text-primary transition-colors opacity-80 hover:opacity-100">Safety</button>
-          <button className="text-sm font-medium hover:text-primary transition-colors opacity-80 hover:opacity-100">Support</button>
-          <Button 
-            variant="ghost" 
-            className="hover:text-primary"
-            onClick={() => setState('RIDER_DASHBOARD')}
-          >
-            Driver Portal
-          </Button>
-        </div>
-      </nav>
+      <header className="relative z-50 w-full bg-white/10 backdrop-blur-md border-b border-white/20">
+        <nav className="flex items-center justify-between px-6 md:px-12 py-4 max-w-7xl mx-auto w-full transition-all duration-300">
+          <div className="flex items-center">
+            <Logo 
+              className="h-9 md:h-11 cursor-pointer hover:opacity-80 transition-opacity" 
+              onClick={() => setState('LANDING')} 
+            />
+          </div>
+          
+          <div className="flex items-center gap-4 md:gap-8">
+            <div className="hidden md:flex items-center gap-6">
+              <button className="text-sm font-semibold text-foreground/70 hover:text-primary transition-colors">Safety</button>
+              <button className="text-sm font-semibold text-foreground/70 hover:text-primary transition-colors">Support</button>
+            </div>
+            <Button 
+              variant="outline"
+              size="sm"
+              className="rounded-full border-primary/20 text-primary hover:bg-primary hover:text-white transition-all font-bold px-5"
+              onClick={() => setState('RIDER_DASHBOARD')}
+            >
+              Driver Portal
+            </Button>
+          </div>
+        </nav>
+      </header>
 
       {/* Main Content Area */}
       <main className="relative z-30 flex-1 flex flex-col items-center justify-center p-6">
