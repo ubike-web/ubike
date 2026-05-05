@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState } from 'react';
@@ -16,7 +15,6 @@ import { MapPin, Navigation, Zap, Bike, Star, ShieldAlert, MessageCircle, ArrowL
 import { calculateFare, MOCK_RIDERS, MOCK_TRAFFIC, MOCK_REQUESTS, type RideType } from '@/lib/ride-service';
 import { smartRiderMatcher, type SmartRiderMatcherOutput } from '@/ai/flows/smart-rider-matcher-flow';
 import { analyzePostRideFeedback } from '@/ai/flows/post-ride-feedback-analyzer-flow';
-import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { cn } from '@/lib/utils';
 
 type FlowState = 'LANDING' | 'BOOKING_PANEL' | 'MATCHING' | 'RIDE_IN_PROGRESS' | 'POST_RIDE' | 'RIDER_DASHBOARD';
@@ -75,21 +73,7 @@ export default function RideShell() {
   };
 
   return (
-    <div className="relative min-h-screen flex flex-col bg-white overflow-hidden">
-      {/* Premium White & Charcoal Hero Background Section */}
-      {state === 'LANDING' && (
-        <div className="absolute inset-0 z-0 bg-[#FDFCFB] overflow-hidden">
-          {/* Soft Radial Base (Clean, warm off-white center) */}
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_40%,#FFFFFF_0%,#F5F5F4_100%)]" />
-          
-          {/* Subtle Charcoal Vignette Overlay (Light grey edges for premium depth) */}
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_0%,rgba(26,25,24,0.04)_100%)] z-10" />
-          
-          {/* Very Subtle Gradient Shift Animation */}
-          <div className="absolute inset-0 opacity-20 bg-[linear-gradient(135deg,rgba(0,0,0,0.02)_0%,transparent_50%,rgba(0,0,0,0.02)_100%)] animate-pulse-subtle" />
-        </div>
-      )}
-
+    <div className="relative min-h-screen flex flex-col overflow-hidden">
       {/* Navigation */}
       <nav className={cn(
         "relative z-50 flex items-center justify-between px-8 py-6 w-full max-w-7xl mx-auto transition-colors duration-500",
