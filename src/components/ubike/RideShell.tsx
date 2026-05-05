@@ -633,19 +633,6 @@ export default function RideShell() {
       </main>
 
       <footer className="relative z-50 p-8 flex flex-col items-center gap-6">
-        {/* Weather Switcher (Control for the Demo) */}
-        <div className="flex items-center gap-4 bg-white/60 backdrop-blur-md px-4 py-2 rounded-full border border-white/40 shadow-sm">
-          <button onClick={() => setWeather('SUNNY')} className={cn("p-2 rounded-full transition-all", weather === 'SUNNY' ? "bg-primary text-white shadow-lg shadow-primary/20" : "text-foreground/40 hover:text-primary")}>
-            <Sun className="w-4 h-4" />
-          </button>
-          <button onClick={() => setWeather('DRIZZLE')} className={cn("p-2 rounded-full transition-all", weather === 'DRIZZLE' ? "bg-primary text-white shadow-lg shadow-primary/20" : "text-foreground/40 hover:text-primary")}>
-            <CloudDrizzle className="w-4 h-4" />
-          </button>
-          <button onClick={() => setWeather('RAINY')} className={cn("p-2 rounded-full transition-all", weather === 'RAINY' ? "bg-primary text-white shadow-lg shadow-primary/20" : "text-foreground/40 hover:text-primary")}>
-            <CloudRain className="w-4 h-4" />
-          </button>
-        </div>
-        
         <div className="text-[10px] font-black uppercase tracking-[0.5em] text-foreground/10 pointer-events-none text-center">
           u-bike global • premium mobility nairobi
         </div>
