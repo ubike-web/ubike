@@ -73,14 +73,16 @@ export default function RideShell() {
       {state === 'LANDING' && (
         <div className="absolute inset-0 z-0 bg-white">
           <Image
-            src={heroImage?.imageUrl || "https://picsum.photos/seed/electric-bike/1920/1080"}
+            src={heroImage?.imageUrl || "https://picsum.photos/seed/electric-motorbike/1920/1080"}
             alt="Modern Electric Motorbike"
             fill
-            className="object-cover opacity-30 animate-breathing blur-md"
+            className="object-cover opacity-30 animate-breathing blur-[6px]"
             priority
             data-ai-hint="electric motorbike"
           />
-          <div className="absolute inset-0 bg-gradient-to-b from-white/80 via-transparent to-white z-10" />
+          {/* Layered Gradient Overlay for Premium Feel & Readability */}
+          <div className="absolute inset-0 bg-white/40 z-10" />
+          <div className="absolute inset-0 bg-gradient-to-b from-white/80 via-transparent to-white z-20" />
         </div>
       )}
 
