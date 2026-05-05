@@ -1,3 +1,4 @@
+
 import React from 'react';
 
 export function Logo({ className = "h-12" }: { className?: string }) {
@@ -9,8 +10,8 @@ export function Logo({ className = "h-12" }: { className?: string }) {
         xmlns="http://www.w3.org/2000/svg"
         className="h-full w-auto"
       >
-        {/* Motorbike Front View - Precisely matched to the image */}
-        <g className="fill-current text-foreground">
+        {/* Motorbike Front View */}
+        <g className="fill-current">
           {/* Handlebars */}
           <path 
             d="M170 85C150 85 130 75 120 75M330 85C350 85 370 75 380 75" 
@@ -34,7 +35,7 @@ export function Logo({ className = "h-12" }: { className?: string }) {
           {/* Front Tire with Tread Pattern */}
           <g>
             <rect x="242" y="115" width="16" height="65" rx="4" fill="currentColor" />
-            {/* Tread Pattern (Chevrons) */}
+            {/* Tread Pattern */}
             <path d="M244 125L250 120L256 125" stroke="white" strokeWidth="1.5" strokeLinecap="round" />
             <path d="M244 135L250 130L256 135" stroke="white" strokeWidth="1.5" strokeLinecap="round" />
             <path d="M244 145L250 140L256 145" stroke="white" strokeWidth="1.5" strokeLinecap="round" />
@@ -43,7 +44,7 @@ export function Logo({ className = "h-12" }: { className?: string }) {
           </g>
         </g>
 
-        {/* The Signature Leaf - Vibrant Green from original image */}
+        {/* The Signature Leaf */}
         <g transform="translate(385, 55) rotate(-15)">
           <path 
             d="M0 20C10 20 40 -5 50 -10C35 15 15 35 0 20Z" 
@@ -57,21 +58,18 @@ export function Logo({ className = "h-12" }: { className?: string }) {
           />
         </g>
 
-        {/* Text Group "u-bike" - Rounded font style matching the image */}
+        {/* Text Group "u-bike" */}
         <g className="font-bold" style={{ fontFamily: 'Poppins, sans-serif' }}>
-          <text x="50" y="165" fontSize="80" fill="currentColor" className="text-foreground">u</text>
-          <text x="115" y="165" fontSize="80" fill="currentColor" className="text-foreground">-</text>
-          <text x="165" y="165" fontSize="80" fill="currentColor" className="text-foreground">b</text>
-          
-          {/* The tire sits here (x=242 to 258) */}
-          
-          <text x="280" y="165" fontSize="80" fill="currentColor" className="text-foreground">i</text>
-          <text x="315" y="165" fontSize="80" fill="currentColor" className="text-foreground">k</text>
-          <text x="370" y="165" fontSize="80" fill="currentColor" className="text-foreground">e</text>
+          <text x="50" y="165" fontSize="80" fill="currentColor">u</text>
+          <text x="115" y="165" fontSize="80" fill="currentColor">-</text>
+          <text x="165" y="165" fontSize="80" fill="currentColor">b</text>
+          <text x="280" y="165" fontSize="80" fill="currentColor">i</text>
+          <text x="315" y="165" fontSize="80" fill="currentColor">k</text>
+          <text x="370" y="165" fontSize="80" fill="currentColor">e</text>
         </g>
 
-        {/* Motion Lines on the 'e' */}
-        <g stroke="currentColor" strokeWidth="4" strokeLinecap="round" className="text-foreground">
+        {/* Motion Lines */}
+        <g stroke="currentColor" strokeWidth="4" strokeLinecap="round">
           <path d="M430 145H465" />
           <path d="M430 157H460" />
           <path d="M430 169H450" />

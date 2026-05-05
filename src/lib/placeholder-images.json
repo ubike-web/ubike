@@ -2,9 +2,9 @@
   "placeholderImages": [
     {
       "id": "hero-motorbike",
-      "description": "Premium Electric Motorbike side view modern African style Spiro-style",
-      "imageUrl": "https://picsum.photos/seed/spiro-premium-moto/1920/1080",
-      "imageHint": "electric motorbike"
+      "description": "Realistic modern premium electric motorbike side view urban road",
+      "imageUrl": "https://picsum.photos/seed/ubike-moto-premium-urban/1920/1080",
+      "imageHint": "motorcycle"
     }
   ]
 }

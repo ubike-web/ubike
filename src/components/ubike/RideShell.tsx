@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState } from 'react';
@@ -78,32 +79,35 @@ export default function RideShell() {
     <div className="relative min-h-screen flex flex-col bg-white overflow-hidden">
       {/* Enhanced Hero Background Section */}
       {state === 'LANDING' && (
-        <div className="absolute inset-0 z-0 bg-white overflow-hidden">
+        <div className="absolute inset-0 z-0 bg-[#2E2B26] overflow-hidden">
           <div className="relative w-full h-full scale-105 animate-breathing">
             <Image
-              src={heroImage?.imageUrl || "https://picsum.photos/seed/spiro-premium-moto/1920/1080"}
-              alt="Premium Electric Motorbike"
+              src={heroImage?.imageUrl || "https://picsum.photos/seed/ubike-moto-premium-urban/1920/1080"}
+              alt="Premium Motorbike"
               fill
-              className="object-cover opacity-30 blur-[4px]"
+              className="object-cover opacity-35 blur-[2px]"
               priority
-              data-ai-hint="electric motorbike"
+              data-ai-hint="motorcycle"
             />
           </div>
-          {/* Refined Layered White Gradients for Readability */}
-          <div className="absolute inset-0 bg-white/20 z-10" />
-          <div className="absolute inset-0 bg-gradient-to-b from-white/60 via-transparent to-white z-20" />
+          {/* Charcoal Overlay Layers */}
+          <div className="absolute inset-0 bg-black/30 z-10" />
+          <div className="absolute inset-0 bg-gradient-to-b from-[#2E2B26]/80 via-transparent to-[#2E2B26] z-20" />
         </div>
       )}
 
       {/* Navigation */}
-      <nav className="relative z-50 flex items-center justify-between px-8 py-6 w-full max-w-7xl mx-auto">
+      <nav className={cn(
+        "relative z-50 flex items-center justify-between px-8 py-6 w-full max-w-7xl mx-auto transition-colors duration-500",
+        state === 'LANDING' ? "text-white" : "text-foreground"
+      )}>
         <Logo className="h-10 cursor-pointer" onClick={() => setState('LANDING')} />
         <div className="flex items-center gap-8">
-          <button className="text-sm font-medium text-foreground/70 hover:text-primary transition-colors">Safety</button>
-          <button className="text-sm font-medium text-foreground/70 hover:text-primary transition-colors">Support</button>
+          <button className="text-sm font-medium hover:text-primary transition-colors opacity-80 hover:opacity-100">Safety</button>
+          <button className="text-sm font-medium hover:text-primary transition-colors opacity-80 hover:opacity-100">Support</button>
           <Button 
             variant="ghost" 
-            className="text-foreground/70 hover:text-primary"
+            className="hover:text-primary"
             onClick={() => setState('RIDER_DASHBOARD')}
           >
             Driver Portal
@@ -120,10 +124,10 @@ export default function RideShell() {
             <>
               <div className="space-y-12 text-center">
                 <div className="space-y-2">
-                  <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-foreground lowercase">
+                  <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-white lowercase">
                     u-bike
                   </h1>
-                  <p className="text-foreground/60 text-lg font-medium tracking-wide">
+                  <p className="text-white/70 text-lg font-medium tracking-wide">
                     Premium motorbike mobility for the city.
                   </p>
                 </div>
@@ -131,17 +135,17 @@ export default function RideShell() {
                 <Card className="glass-morphism border-none shadow-2xl rounded-3xl overflow-hidden">
                   <CardContent className="p-0">
                     <Tabs defaultValue="Normal" onValueChange={(v) => setRideType(v as RideType)} className="w-full">
-                      <TabsList className="grid w-full grid-cols-2 h-16 bg-white/20 p-2 gap-2">
+                      <TabsList className="grid w-full grid-cols-2 h-16 bg-white/10 p-2 gap-2">
                         <TabsTrigger 
                           value="Normal" 
-                          className="rounded-2xl data-[state=active]:bg-white data-[state=active]:shadow-lg h-full transition-all"
+                          className="rounded-2xl data-[state=active]:bg-white data-[state=active]:text-foreground h-full transition-all"
                         >
                           <Bike className="w-4 h-4 mr-2" />
                           Standard
                         </TabsTrigger>
                         <TabsTrigger 
                           value="Electric" 
-                          className="rounded-2xl data-[state=active]:bg-white data-[state=active]:shadow-lg h-full transition-all"
+                          className="rounded-2xl data-[state=active]:bg-white data-[state=active]:text-foreground h-full transition-all"
                         >
                           <Zap className="w-4 h-4 mr-2 text-primary" />
                           Electric
@@ -154,7 +158,7 @@ export default function RideShell() {
                             <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-primary" />
                             <Input 
                               placeholder="Where from?" 
-                              className="pl-12 h-14 bg-white/50 border-white/40 rounded-2xl text-lg focus:bg-white transition-all shadow-sm" 
+                              className="pl-12 h-14 bg-white/90 border-none rounded-2xl text-lg focus:bg-white transition-all shadow-sm" 
                               value={pickup}
                               onChange={(e) => setPickup(e.target.value)}
                             />
@@ -163,7 +167,7 @@ export default function RideShell() {
                             <Navigation className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-primary" />
                             <Input 
                               placeholder="Where to?" 
-                              className="pl-12 h-14 bg-white/50 border-white/40 rounded-2xl text-lg focus:bg-white transition-all shadow-sm"
+                              className="pl-12 h-14 bg-white/90 border-none rounded-2xl text-lg focus:bg-white transition-all shadow-sm"
                               value={destination}
                               onChange={(e) => setDestination(e.target.value)}
                             />
@@ -395,7 +399,7 @@ export default function RideShell() {
                 <Button variant="ghost" className="rounded-2xl" onClick={() => setState('LANDING')}>Exit</Button>
               </div>
               
-              <Card className="bg-foreground text-white rounded-3xl p-10 shadow-2xl border-none overflow-hidden relative">
+              <Card className="bg-[#2E2B26] text-white rounded-3xl p-10 shadow-2xl border-none overflow-hidden relative">
                 <div className="absolute top-0 right-0 p-8 opacity-10">
                   <Bike className="w-32 h-32" />
                 </div>
