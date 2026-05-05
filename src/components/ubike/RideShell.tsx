@@ -120,7 +120,7 @@ export default function RideShell() {
 
                   {/* SPINNING MOTORCYCLE IMAGE */}
                   <div className="relative w-40 h-40 -my-4 animate-spin-3d flex items-center justify-center">
-                    {spinningBike && (
+                    {spinningBike ? (
                       <Image 
                         src={spinningBike.imageUrl}
                         alt="Spinning Bike"
@@ -129,6 +129,8 @@ export default function RideShell() {
                         priority
                         data-ai-hint={spinningBike.imageHint}
                       />
+                    ) : (
+                      <Bike className="w-24 h-24 text-primary opacity-20" />
                     )}
                   </div>
 
