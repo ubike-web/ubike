@@ -55,13 +55,14 @@
 }
 
 @keyframes spin-3d {
-  from { transform: rotateY(0deg); }
-  to { transform: rotateY(360deg); }
+  0% { transform: perspective(1000px) rotateY(0deg); }
+  50% { transform: perspective(1000px) rotateY(180deg) scale(1.1); }
+  100% { transform: perspective(1000px) rotateY(360deg); }
 }
 
 .animate-spin-3d {
-  animation: spin-3d 6s linear infinite;
-  perspective: 1000px;
+  animation: spin-3d 8s ease-in-out infinite;
+  transform-style: preserve-3d;
 }
 
 @keyframes fadeIn {

@@ -106,35 +106,35 @@ export default function RideShell() {
       </header>
 
       {/* Main Content Area */}
-      <main className="relative z-30 flex-1 flex flex-col items-center justify-center p-6">
+      <main className="relative z-30 flex-1 flex flex-col items-center justify-center p-6 pb-20">
         <div className="w-full max-w-xl animate-fade-in space-y-12">
           
           {/* LANDING / HERO FORM */}
           {state === 'LANDING' && (
             <>
               <div className="space-y-12 text-center">
-                <div className="space-y-2 flex flex-col items-center">
+                <div className="space-y-6 flex flex-col items-center">
                   <h1 className="text-4xl md:text-6xl font-black tracking-tighter text-foreground lowercase">
                     u-bike
                   </h1>
 
                   {/* SPINNING MOTORCYCLE IMAGE */}
-                  <div className="relative w-40 h-40 -my-4 animate-spin-3d flex items-center justify-center">
+                  <div className="relative w-64 h-64 z-10 animate-spin-3d flex items-center justify-center">
                     {spinningBike ? (
                       <Image 
                         src={spinningBike.imageUrl}
                         alt="Spinning Bike"
                         fill
-                        className="object-contain drop-shadow-2xl"
+                        className="object-contain drop-shadow-[0_20px_50px_rgba(255,102,0,0.3)]"
                         priority
                         data-ai-hint={spinningBike.imageHint}
                       />
                     ) : (
-                      <Bike className="w-24 h-24 text-primary opacity-20" />
+                      <Bike className="w-24 h-24 text-primary opacity-50" />
                     )}
                   </div>
 
-                  <p className="text-foreground/60 text-lg font-medium tracking-wide">
+                  <p className="text-foreground/60 text-lg font-medium tracking-wide max-w-md">
                     Premium motorbike mobility for the city.
                   </p>
                 </div>
