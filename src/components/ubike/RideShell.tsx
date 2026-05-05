@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState } from 'react';
@@ -70,17 +71,16 @@ export default function RideShell() {
     <div className="relative min-h-screen flex flex-col bg-white overflow-hidden">
       {/* Background Breathing Image */}
       {state === 'LANDING' && (
-        <div className="absolute inset-0 z-0">
-          <div className="absolute inset-0 bg-white/80 z-10" />
+        <div className="absolute inset-0 z-0 bg-white">
           <Image
-            src={heroImage?.imageUrl || "https://picsum.photos/seed/boda/1920/1080"}
-            alt="Motorbike"
+            src={heroImage?.imageUrl || "https://picsum.photos/seed/electric-bike/1920/1080"}
+            alt="Modern Electric Motorbike"
             fill
-            className="object-cover opacity-30 animate-breathing blur-sm"
+            className="object-cover opacity-30 animate-breathing blur-md"
             priority
-            data-ai-hint="motorbike street"
+            data-ai-hint="electric motorbike"
           />
-          <div className="absolute inset-0 bg-gradient-to-b from-white via-transparent to-white z-20" />
+          <div className="absolute inset-0 bg-gradient-to-b from-white/80 via-transparent to-white z-10" />
         </div>
       )}
 
