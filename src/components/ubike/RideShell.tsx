@@ -84,7 +84,7 @@ export default function RideShell() {
   };
 
   return (
-    <div className="relative min-h-screen flex flex-col overflow-hidden bg-white">
+    <div className="relative min-h-screen flex flex-col overflow-hidden bg-transparent">
       {/* Weather Overlay */}
       <div className="fixed inset-0 pointer-events-none z-0">
         {weather === 'RAINY' && (
