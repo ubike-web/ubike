@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState } from 'react';
@@ -10,11 +9,14 @@ import { Input } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { MapPin, Navigation, Zap, Bike, Star, ShieldAlert, MessageCircle, ArrowLeft, Loader2, User } from 'lucide-react';
-import { calculateFare, MOCK_RIDERS, MOCK_TRAFFIC, type RideType } from '@/lib/ride-service';
+import { Badge } from '@/components/ui/badge';
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
+import { MapPin, Navigation, Zap, Bike, Star, ShieldAlert, MessageCircle, ArrowLeft, Loader2, User, Check, X } from 'lucide-react';
+import { calculateFare, MOCK_RIDERS, MOCK_TRAFFIC, MOCK_REQUESTS, type RideType } from '@/lib/ride-service';
 import { smartRiderMatcher, type SmartRiderMatcherOutput } from '@/ai/flows/smart-rider-matcher-flow';
 import { analyzePostRideFeedback } from '@/ai/flows/post-ride-feedback-analyzer-flow';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
+import { cn } from '@/lib/utils';
 
 type FlowState = 'LANDING' | 'BOOKING_PANEL' | 'MATCHING' | 'RIDE_IN_PROGRESS' | 'POST_RIDE' | 'RIDER_DASHBOARD';
 
@@ -29,6 +31,7 @@ export default function RideShell() {
   const [matchedRider, setMatchedRider] = useState<SmartRiderMatcherOutput | null>(null);
   const [feedback, setFeedback] = useState('');
   const [rating, setRating] = useState(0);
+  const [rideRequests, setRideRequests] = useState(MOCK_REQUESTS);
 
   const heroImage = PlaceHolderImages.find(img => img.id === 'hero-motorbike');
   const distance = pickup && destination ? 5.2 : 0;
@@ -67,6 +70,10 @@ export default function RideShell() {
     setRating(0);
   };
 
+  const handleRequestAction = (id: string) => {
+    setRideRequests(prev => prev.filter(req => req.id !== id));
+  };
+
   return (
     <div className="relative min-h-screen flex flex-col bg-white overflow-hidden">
       {/* Enhanced Hero Background Section */}
@@ -88,9 +95,9 @@ export default function RideShell() {
         </div>
       )}
 
-      {/* Navigation - Untouched per requirements */}
+      {/* Navigation */}
       <nav className="relative z-50 flex items-center justify-between px-8 py-6 w-full max-w-7xl mx-auto">
-        <Logo className="h-10 cursor-pointer" />
+        <Logo className="h-10 cursor-pointer" onClick={() => setState('LANDING')} />
         <div className="flex items-center gap-8">
           <button className="text-sm font-medium text-foreground/70 hover:text-primary transition-colors">Safety</button>
           <button className="text-sm font-medium text-foreground/70 hover:text-primary transition-colors">Support</button>
@@ -104,85 +111,135 @@ export default function RideShell() {
         </div>
       </nav>
 
-      {/* Main Content Area - Layout Untouched */}
+      {/* Main Content Area */}
       <main className="relative z-30 flex-1 flex flex-col items-center justify-center p-6">
-        <div className="w-full max-w-xl animate-fade-in">
+        <div className="w-full max-w-xl animate-fade-in space-y-12">
           
-          {/* LANDING / HERO FORM - Untouched per requirements */}
+          {/* LANDING / HERO FORM */}
           {state === 'LANDING' && (
-            <div className="space-y-12 text-center">
-              <div className="space-y-2">
-                <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-foreground lowercase">
-                  u-bike
-                </h1>
-                <p className="text-foreground/60 text-lg font-medium tracking-wide">
-                  Premium motorbike mobility for the city.
-                </p>
+            <>
+              <div className="space-y-12 text-center">
+                <div className="space-y-2">
+                  <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-foreground lowercase">
+                    u-bike
+                  </h1>
+                  <p className="text-foreground/60 text-lg font-medium tracking-wide">
+                    Premium motorbike mobility for the city.
+                  </p>
+                </div>
+
+                <Card className="glass-morphism border-none shadow-2xl rounded-3xl overflow-hidden">
+                  <CardContent className="p-0">
+                    <Tabs defaultValue="Normal" onValueChange={(v) => setRideType(v as RideType)} className="w-full">
+                      <TabsList className="grid w-full grid-cols-2 h-16 bg-white/20 p-2 gap-2">
+                        <TabsTrigger 
+                          value="Normal" 
+                          className="rounded-2xl data-[state=active]:bg-white data-[state=active]:shadow-lg h-full transition-all"
+                        >
+                          <Bike className="w-4 h-4 mr-2" />
+                          Standard
+                        </TabsTrigger>
+                        <TabsTrigger 
+                          value="Electric" 
+                          className="rounded-2xl data-[state=active]:bg-white data-[state=active]:shadow-lg h-full transition-all"
+                        >
+                          <Zap className="w-4 h-4 mr-2 text-primary" />
+                          Electric
+                        </TabsTrigger>
+                      </TabsList>
+                      
+                      <div className="p-8 space-y-6">
+                        <div className="space-y-4">
+                          <div className="relative">
+                            <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-primary" />
+                            <Input 
+                              placeholder="Where from?" 
+                              className="pl-12 h-14 bg-white/50 border-white/40 rounded-2xl text-lg focus:bg-white transition-all shadow-sm" 
+                              value={pickup}
+                              onChange={(e) => setPickup(e.target.value)}
+                            />
+                          </div>
+                          <div className="relative">
+                            <Navigation className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-primary" />
+                            <Input 
+                              placeholder="Where to?" 
+                              className="pl-12 h-14 bg-white/50 border-white/40 rounded-2xl text-lg focus:bg-white transition-all shadow-sm"
+                              value={destination}
+                              onChange={(e) => setDestination(e.target.value)}
+                            />
+                          </div>
+                        </div>
+
+                        {pickup && destination && (
+                          <div className="pt-2 text-left">
+                            <p className="text-xs font-bold text-foreground/40 uppercase tracking-widest mb-1">Estimated Fare</p>
+                            <p className="text-3xl font-bold text-primary">{estimatedFare}</p>
+                          </div>
+                        )}
+
+                        <Button 
+                          className="w-full h-16 text-lg font-bold bg-primary hover:bg-primary/90 text-white rounded-2xl shadow-xl shadow-primary/20 transition-all hover:scale-[1.01]"
+                          onClick={startBooking}
+                        >
+                          Book Ride
+                        </Button>
+                      </div>
+                    </Tabs>
+                  </CardContent>
+                </Card>
               </div>
 
-              <Card className="glass-morphism border-none shadow-2xl rounded-3xl overflow-hidden">
-                <CardContent className="p-0">
-                  <Tabs defaultValue="Normal" onValueChange={(v) => setRideType(v as RideType)} className="w-full">
-                    <TabsList className="grid w-full grid-cols-2 h-16 bg-white/20 p-2 gap-2">
-                      <TabsTrigger 
-                        value="Normal" 
-                        className="rounded-2xl data-[state=active]:bg-white data-[state=active]:shadow-lg h-full transition-all"
-                      >
-                        <Bike className="w-4 h-4 mr-2" />
-                        Standard
-                      </TabsTrigger>
-                      <TabsTrigger 
-                        value="Electric" 
-                        className="rounded-2xl data-[state=active]:bg-white data-[state=active]:shadow-lg h-full transition-all"
-                      >
-                        <Zap className="w-4 h-4 mr-2 text-primary" />
-                        Electric
-                      </TabsTrigger>
-                    </TabsList>
-                    
-                    <div className="p-8 space-y-6">
-                      <div className="space-y-4">
-                        <div className="relative">
-                          <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-primary" />
-                          <Input 
-                            placeholder="Where from?" 
-                            className="pl-12 h-14 bg-white/50 border-white/40 rounded-2xl text-lg focus:bg-white transition-all shadow-sm" 
-                            value={pickup}
-                            onChange={(e) => setPickup(e.target.value)}
+              {/* Feature 1: Available Riders Preview */}
+              <div className="space-y-6 animate-in fade-in slide-in-from-bottom-8 duration-700 delay-300">
+                <div className="flex items-center justify-between px-2">
+                  <h3 className="text-xl font-bold tracking-tight">Available Riders Near You</h3>
+                  <Badge variant="outline" className="rounded-full border-primary/20 text-primary font-bold">
+                    <span className="h-1.5 w-1.5 rounded-full bg-primary mr-2 animate-pulse" />
+                    LIVE
+                  </Badge>
+                </div>
+                
+                <ScrollArea className="w-full whitespace-nowrap">
+                  <div className="flex w-max space-x-4 p-1 pb-4">
+                    {MOCK_RIDERS.map((rider) => (
+                      <Card key={rider.id} className="w-[200px] shrink-0 glass-morphism border-none shadow-lg rounded-2xl overflow-hidden hover:scale-105 transition-all duration-300 cursor-default">
+                        <div className="relative h-24 w-full bg-muted">
+                          <Image
+                            src={rider.imageUrl || `https://picsum.photos/seed/${rider.id}/400/300`}
+                            alt={rider.name}
+                            fill
+                            className="object-cover opacity-80"
+                            data-ai-hint="motorbike"
                           />
+                          <div className="absolute top-2 right-2">
+                            {rider.bikeType === 'Electric' ? (
+                              <Badge className="bg-white/90 text-primary border-none shadow-sm"><Zap className="w-3 h-3" /></Badge>
+                            ) : (
+                              <Badge className="bg-white/90 text-foreground/60 border-none shadow-sm"><Bike className="w-3 h-3" /></Badge>
+                            )}
+                          </div>
                         </div>
-                        <div className="relative">
-                          <Navigation className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-primary" />
-                          <Input 
-                            placeholder="Where to?" 
-                            className="pl-12 h-14 bg-white/50 border-white/40 rounded-2xl text-lg focus:bg-white transition-all shadow-sm"
-                            value={destination}
-                            onChange={(e) => setDestination(e.target.value)}
-                          />
-                        </div>
-                      </div>
-
-                      {pickup && destination && (
-                        <div className="pt-2">
-                          <p className="text-xs font-bold text-foreground/40 uppercase tracking-widest mb-1">Estimated Fare</p>
-                          <p className="text-3xl font-bold text-primary">{estimatedFare}</p>
-                        </div>
-                      )}
-
-                      <Button 
-                        className="w-full h-16 text-lg font-bold bg-primary hover:bg-primary/90 text-white rounded-2xl shadow-xl shadow-primary/20 transition-all hover:scale-[1.01]"
-                        onClick={startBooking}
-                      >
-                        Book Ride
-                      </Button>
-                    </div>
-                  </Tabs>
-                </CardContent>
-              </Card>
-            </div>
+                        <CardContent className="p-4 space-y-2">
+                          <div className="flex items-center justify-between">
+                            <p className="font-bold text-sm truncate">{rider.name}</p>
+                            <span className="flex items-center gap-1 text-[10px] font-bold text-primary">
+                              <Star className="w-3 h-3 fill-primary" /> {rider.rating}
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <p className="text-[10px] text-foreground/40 font-medium uppercase tracking-wider">{rider.bikeType}</p>
+                            <p className="text-[9px] font-bold text-green-500 uppercase">Available</p>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                  <ScrollBar orientation="horizontal" />
+                </ScrollArea>
+              </div>
+            </>
           )}
 
-          {/* Subsequent states remain untouched per requirements */}
           {state === 'BOOKING_PANEL' && (
             <div className="space-y-6">
               <div className="flex items-center gap-4 mb-2">
@@ -332,13 +389,17 @@ export default function RideShell() {
           )}
 
           {state === 'RIDER_DASHBOARD' && (
-            <div className="space-y-8">
+            <div className="space-y-8 animate-in fade-in duration-700">
               <div className="flex items-center justify-between">
                 <h2 className="text-3xl font-bold tracking-tight">Rider Portal</h2>
                 <Button variant="ghost" className="rounded-2xl" onClick={() => setState('LANDING')}>Exit</Button>
               </div>
-              <Card className="bg-foreground text-white rounded-3xl p-10 shadow-2xl border-none">
-                <div className="space-y-8">
+              
+              <Card className="bg-foreground text-white rounded-3xl p-10 shadow-2xl border-none overflow-hidden relative">
+                <div className="absolute top-0 right-0 p-8 opacity-10">
+                  <Bike className="w-32 h-32" />
+                </div>
+                <div className="relative z-10 space-y-8">
                   <div>
                     <p className="text-white/50 text-xs font-black uppercase tracking-[0.2em] mb-2">Available Balance</p>
                     <p className="text-5xl font-black">KES 14,200</p>
@@ -356,6 +417,70 @@ export default function RideShell() {
                   <Button className="w-full h-14 bg-primary hover:bg-primary/90 text-white font-bold rounded-2xl">Cash Out</Button>
                 </div>
               </Card>
+
+              {/* Feature 2: Nearby Ride Requests */}
+              <div className="space-y-6">
+                <div className="flex items-center justify-between px-2">
+                  <h3 className="text-xl font-bold tracking-tight">Nearby Ride Requests</h3>
+                  <p className="text-xs font-medium text-foreground/40">{rideRequests.length} active requests</p>
+                </div>
+                
+                <div className="space-y-4">
+                  {rideRequests.length > 0 ? (
+                    rideRequests.map((req) => (
+                      <Card key={req.id} className="glass-morphism border-none shadow-lg rounded-3xl overflow-hidden animate-in slide-in-from-right duration-500">
+                        <CardContent className="p-6">
+                          <div className="flex justify-between items-start mb-6">
+                            <div className="space-y-4">
+                              <div className="flex items-start gap-3">
+                                <div className="mt-1 h-2 w-2 rounded-full bg-primary shrink-0" />
+                                <div>
+                                  <p className="text-[10px] font-black uppercase tracking-widest text-foreground/40 mb-1">Pickup</p>
+                                  <p className="font-bold text-lg">{req.pickup}</p>
+                                </div>
+                              </div>
+                              <div className="flex items-start gap-3">
+                                <Navigation className="w-4 h-4 text-primary shrink-0" />
+                                <div>
+                                  <p className="text-[10px] font-black uppercase tracking-widest text-foreground/40 mb-1">Destination</p>
+                                  <p className="font-bold text-lg">{req.destination}</p>
+                                </div>
+                              </div>
+                            </div>
+                            <div className="text-right space-y-2">
+                              <Badge className="bg-primary/10 text-primary border-none font-bold uppercase text-[10px] tracking-widest">
+                                {req.type}
+                              </Badge>
+                              <p className="text-2xl font-black text-primary">{req.price}</p>
+                              <p className="text-xs font-bold text-foreground/30">{req.distance}</p>
+                            </div>
+                          </div>
+                          
+                          <div className="flex gap-3 pt-2">
+                            <Button 
+                              variant="outline" 
+                              className="flex-1 h-14 rounded-2xl border-border hover:bg-destructive/5 hover:text-destructive transition-all"
+                              onClick={() => handleRequestAction(req.id)}
+                            >
+                              <X className="w-4 h-4 mr-2" /> Decline
+                            </Button>
+                            <Button 
+                              className="flex-1 h-14 bg-primary text-white font-bold rounded-2xl shadow-lg shadow-primary/20 hover:scale-[1.02] transition-all"
+                              onClick={() => handleRequestAction(req.id)}
+                            >
+                              <Check className="w-4 h-4 mr-2" /> Accept
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))
+                  ) : (
+                    <div className="text-center py-12 bg-muted/20 rounded-3xl border-2 border-dashed border-border/50">
+                      <p className="text-foreground/30 font-bold uppercase tracking-widest">Searching for requests...</p>
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
           )}
 

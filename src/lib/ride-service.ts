@@ -22,6 +22,7 @@ export const MOCK_RIDERS = [
     estimatedTimeToUser: '4 minutes',
     estimatedTravelTime: '15 minutes',
     historicalCompletionRate: 98,
+    imageUrl: 'https://picsum.photos/seed/rider1/400/300'
   },
   {
     id: 'R002',
@@ -32,6 +33,7 @@ export const MOCK_RIDERS = [
     estimatedTimeToUser: '6 minutes',
     estimatedTravelTime: '18 minutes',
     historicalCompletionRate: 95,
+    imageUrl: 'https://picsum.photos/seed/rider2/400/300'
   },
   {
     id: 'R003',
@@ -42,6 +44,7 @@ export const MOCK_RIDERS = [
     estimatedTimeToUser: '3 minutes',
     estimatedTravelTime: '12 minutes',
     historicalCompletionRate: 92,
+    imageUrl: 'https://picsum.photos/seed/rider3/400/300'
   },
   {
     id: 'R004',
@@ -52,6 +55,26 @@ export const MOCK_RIDERS = [
     estimatedTimeToUser: '5 minutes',
     estimatedTravelTime: '20 minutes',
     historicalCompletionRate: 99,
+    imageUrl: 'https://picsum.photos/seed/rider4/400/300'
+  }
+];
+
+export const MOCK_REQUESTS = [
+  {
+    id: 'REQ001',
+    pickup: 'Town Center, Nairobi',
+    destination: 'Westlands Stage',
+    distance: '2.3 km away',
+    price: 'KES 250',
+    type: 'Electric' as const,
+  },
+  {
+    id: 'REQ002',
+    pickup: 'Kilimani Shopping Mall',
+    destination: 'CBD - Uhuru Park',
+    distance: '4.1 km away',
+    price: 'KES 400',
+    type: 'Normal' as const,
   }
 ];
 
