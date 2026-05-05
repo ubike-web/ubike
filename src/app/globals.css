@@ -4,25 +4,25 @@
 
 @layer base {
   :root {
-    --background: 34 11% 16%; /* #2E2B26 - Dark Charred Wood */
-    --foreground: 40 20% 95%; /* Soft Beige Text */
-    --card: 34 11% 18%;
-    --card-foreground: 40 20% 95%;
-    --popover: 34 11% 16%;
-    --popover-foreground: 40 20% 95%;
-    --primary: 40 50% 50%; /* #BF9340 - Muted Gold */
-    --primary-foreground: 34 11% 10%;
-    --secondary: 34 11% 22%;
-    --secondary-foreground: 40 20% 95%;
-    --muted: 34 11% 22%;
-    --muted-foreground: 40 10% 70%;
-    --accent: 9 65% 33%; /* #8B2E1E - Deep Burnt Sienna */
-    --accent-foreground: 40 20% 95%;
+    --background: 0 0% 100%;
+    --foreground: 24 10% 10%;
+    --card: 0 0% 100%;
+    --card-foreground: 24 10% 10%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 24 10% 10%;
+    --primary: 24 100% 50%; /* Vibrant Orange */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 24 20% 96%;
+    --secondary-foreground: 24 10% 10%;
+    --muted: 24 20% 96%;
+    --muted-foreground: 24 10% 45%;
+    --accent: 24 100% 50%;
+    --accent-foreground: 0 0% 100%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
-    --border: 34 11% 25%;
-    --input: 34 11% 25%;
-    --ring: 40 50% 50%;
+    --border: 24 10% 90%;
+    --input: 24 10% 90%;
+    --ring: 24 100% 50%;
     --radius: 0.75rem;
   }
 }
@@ -38,13 +38,13 @@
 }
 
 .glass-morphism {
-  @apply bg-card/80 backdrop-blur-lg border border-white/5;
+  @apply bg-white/70 backdrop-blur-lg border border-black/5 shadow-sm;
 }
 
-.glow-gold {
-  box-shadow: 0 0 15px rgba(191, 147, 64, 0.2);
+.glow-orange {
+  box-shadow: 0 0 15px rgba(255, 122, 0, 0.2);
 }
 
-.glow-sienna {
-  box-shadow: 0 0 15px rgba(139, 46, 30, 0.3);
+.animate-pulse-subtle {
+  animation: pulse-subtle 2s infinite ease-in-out;
 }

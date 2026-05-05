@@ -10,7 +10,7 @@ export function Logo({ className = "h-12" }: { className?: string }) {
         className="h-full w-auto"
       >
         {/* Motorbike Upper Silhouette */}
-        <g className="fill-current text-white">
+        <g className="fill-current text-foreground">
           {/* Handlebars */}
           <path 
             d="M100 65C85 65 75 50 65 50" 
@@ -39,20 +39,20 @@ export function Logo({ className = "h-12" }: { className?: string }) {
           <circle cx="150" cy="75" r="4" fill="currentColor" />
         </g>
 
-        {/* The Green Leaf */}
+        {/* The Leaf - Now themed Orange */}
         <path 
           d="M245 45C255 45 285 20 295 15C280 35 260 55 245 45Z" 
-          fill="#82C91E" 
+          fill="hsl(24 100% 50%)" 
         />
         <path 
           d="M245 45C260 35 275 25 290 18" 
-          stroke="#406611" 
+          stroke="currentColor" 
           strokeWidth="1.5" 
           strokeLinecap="round" 
         />
 
         {/* Text Group */}
-        <g className="fill-current text-white font-bold" style={{ fontFamily: 'Poppins, sans-serif' }}>
+        <g className="fill-current text-foreground font-bold" style={{ fontFamily: 'Poppins, sans-serif' }}>
           {/* "u-" */}
           <text x="10" y="115" fontSize="70">u-</text>
           
@@ -63,7 +63,6 @@ export function Logo({ className = "h-12" }: { className?: string }) {
           <g>
             <circle cx="172" cy="105" r="22" stroke="currentColor" strokeWidth="8" fill="none" />
             <circle cx="172" cy="105" r="6" fill="currentColor" />
-            {/* Tire Treads (Simplified) */}
             <path d="M172 83V88M172 122V127M150 105H155M189 105H194" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
           </g>
           
@@ -72,7 +71,7 @@ export function Logo({ className = "h-12" }: { className?: string }) {
         </g>
 
         {/* Speed Lines */}
-        <g stroke="currentColor" strokeWidth="3" strokeLinecap="round">
+        <g stroke="hsl(24 100% 50%)" strokeWidth="3" strokeLinecap="round">
           <path d="M300 100H335" />
           <path d="M300 110H330" />
           <path d="M300 120H325" />
