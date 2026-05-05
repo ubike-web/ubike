@@ -118,6 +118,7 @@ export default function RideShell() {
                     u-bike
                   </h1>
 
+                  {/* SPINNING MOTORCYCLE IMAGE */}
                   <div className="relative w-24 h-24 my-4 animate-spin-slow">
                     {spinningBike && (
                       <Image 
