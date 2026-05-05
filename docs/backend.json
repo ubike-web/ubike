@@ -1,0 +1,572 @@
+{
+  "entities": {
+    "UserProfile": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "UserProfile",
+      "type": "object",
+      "description": "Represents a user of the u-bike platform who books rides or errands.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the UserProfile entity."
+        },
+        "name": {
+          "type": "string",
+          "description": "The full name of the user."
+        },
+        "phoneNumber": {
+          "type": "string",
+          "description": "The user's contact phone number."
+        },
+        "email": {
+          "type": "string",
+          "description": "The user's email address.",
+          "format": "email"
+        },
+        "favoriteRiderIds": {
+          "type": "array",
+          "description": "References to Riders marked as favorite by the user. (Relationship: User N:N Rider)",
+          "items": {
+            "type": "string"
+          }
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when the user profile was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp when the user profile was last updated.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "phoneNumber",
+        "createdAt"
+      ]
+    },
+    "RiderProfile": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "RiderProfile",
+      "type": "object",
+      "description": "Represents a rider providing services on the u-bike platform, including their details, availability, and service types.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the RiderProfile entity."
+        },
+        "externalAuthId": {
+          "type": "string",
+          "description": "Reference ID from an external authentication system for the rider. (Note: Passwords are not stored here)."
+        },
+        "name": {
+          "type": "string",
+          "description": "The full name of the rider."
+        },
+        "phoneNumber": {
+          "type": "string",
+          "description": "The rider's contact phone number, used for authentication and contact."
+        },
+        "bikeType": {
+          "type": "string",
+          "description": "The type of bike the rider uses (e.g., 'Normal', 'Electric')."
+        },
+        "bikeDetails": {
+          "type": "string",
+          "description": "Specific details about the rider's bike, such as model and license plate."
+        },
+        "averageRating": {
+          "type": "number",
+          "description": "The average rating received by the rider from completed trips. (Derived value)."
+        },
+        "isAvailable": {
+          "type": "boolean",
+          "description": "Indicates whether the rider is currently available to accept new requests."
+        },
+        "riderServiceTypes": {
+          "type": "array",
+          "description": "An array of services the rider is configured to provide (e.g., 'PassengerRides', 'Errands', 'Both').",
+          "items": {
+            "type": "string"
+          }
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when the rider profile was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp when the rider profile was last updated.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "externalAuthId",
+        "name",
+        "phoneNumber",
+        "bikeType",
+        "bikeDetails",
+        "isAvailable",
+        "riderServiceTypes",
+        "createdAt"
+      ]
+    },
+    "RideRequest": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "RideRequest",
+      "type": "object",
+      "description": "Represents a user's request for a motorbike ride to transport a passenger.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the RideRequest entity."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to the UserProfile who made the request. (Relationship: UserProfile 1:N RideRequest)"
+        },
+        "riderId": {
+          "type": "string",
+          "description": "Reference to the RiderProfile assigned to this request. (Relationship: RiderProfile 1:N RideRequest)"
+        },
+        "pickupLocation": {
+          "type": "string",
+          "description": "The starting location for the ride."
+        },
+        "destination": {
+          "type": "string",
+          "description": "The final destination for the ride."
+        },
+        "rideType": {
+          "type": "string",
+          "description": "The type of bike requested for the ride ('Normal' or 'Electric')."
+        },
+        "estimatedPrice": {
+          "type": "number",
+          "description": "The estimated price for the ride at the time of booking."
+        },
+        "actualPrice": {
+          "type": "number",
+          "description": "The final actual price charged for the completed ride."
+        },
+        "distanceKm": {
+          "type": "number",
+          "description": "The calculated distance of the ride in kilometers."
+        },
+        "status": {
+          "type": "string",
+          "description": "The current status of the ride request (e.g., 'Pending', 'Searching', 'Accepted', 'InProgress', 'Completed', 'Cancelled')."
+        },
+        "requestedAt": {
+          "type": "string",
+          "description": "Timestamp when the ride request was made.",
+          "format": "date-time"
+        },
+        "acceptedAt": {
+          "type": "string",
+          "description": "Timestamp when a rider accepted the request.",
+          "format": "date-time"
+        },
+        "startedAt": {
+          "type": "string",
+          "description": "Timestamp when the ride officially started.",
+          "format": "date-time"
+        },
+        "completedAt": {
+          "type": "string",
+          "description": "Timestamp when the ride was completed.",
+          "format": "date-time"
+        },
+        "passengerName": {
+          "type": "string",
+          "description": "Name of the passenger if the ride is booked for someone else. Optional."
+        },
+        "passengerPhoneNumber": {
+          "type": "string",
+          "description": "Phone number of the passenger if the ride is booked for someone else. Optional."
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "pickupLocation",
+        "destination",
+        "rideType",
+        "estimatedPrice",
+        "status",
+        "requestedAt"
+      ]
+    },
+    "ErrandRequest": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "ErrandRequest",
+      "type": "object",
+      "description": "Represents a user's request for a motorbike rider to deliver or pick up items.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the ErrandRequest entity."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to the UserProfile who made the errand request. (Relationship: UserProfile 1:N ErrandRequest)"
+        },
+        "riderId": {
+          "type": "string",
+          "description": "Reference to the RiderProfile assigned to this errand. (Relationship: RiderProfile 1:N ErrandRequest)"
+        },
+        "pickupLocation": {
+          "type": "string",
+          "description": "The location where the item needs to be picked up."
+        },
+        "deliveryLocation": {
+          "type": "string",
+          "description": "The location where the item needs to be delivered."
+        },
+        "itemDescription": {
+          "type": "string",
+          "description": "A description of the item(s) to be transported."
+        },
+        "itemSize": {
+          "type": "string",
+          "description": "The estimated size of the item(s) ('Small', 'Medium', 'Large')."
+        },
+        "estimatedPrice": {
+          "type": "number",
+          "description": "The estimated price for the errand at the time of booking."
+        },
+        "actualPrice": {
+          "type": "number",
+          "description": "The final actual price charged for the completed errand."
+        },
+        "distanceKm": {
+          "type": "number",
+          "description": "The calculated distance of the errand in kilometers."
+        },
+        "status": {
+          "type": "string",
+          "description": "The current status of the errand request (e.g., 'Pending', 'Searching', 'Accepted', 'InProgress', 'Completed', 'Cancelled')."
+        },
+        "requestedAt": {
+          "type": "string",
+          "description": "Timestamp when the errand request was made.",
+          "format": "date-time"
+        },
+        "acceptedAt": {
+          "type": "string",
+          "description": "Timestamp when a rider accepted the errand request.",
+          "format": "date-time"
+        },
+        "startedAt": {
+          "type": "string",
+          "description": "Timestamp when the errand officially started (e.g., pickup initiated).",
+          "format": "date-time"
+        },
+        "completedAt": {
+          "type": "string",
+          "description": "Timestamp when the errand was completed (e.g., item delivered).",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "pickupLocation",
+        "deliveryLocation",
+        "itemDescription",
+        "itemSize",
+        "estimatedPrice",
+        "status",
+        "requestedAt"
+      ]
+    },
+    "PaymentTransaction": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "PaymentTransaction",
+      "type": "object",
+      "description": "Records details of a financial transaction related to a ride or errand on the platform.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the PaymentTransaction entity."
+        },
+        "rideRequestId": {
+          "type": "string",
+          "description": "Reference to the RideRequest if this transaction is for a passenger ride. Optional. (Relationship: RideRequest 1:N PaymentTransaction)"
+        },
+        "errandRequestId": {
+          "type": "string",
+          "description": "Reference to the ErrandRequest if this transaction is for an errand. Optional. (Relationship: ErrandRequest 1:N PaymentTransaction)"
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to the UserProfile involved in this transaction (payer). (Relationship: UserProfile 1:N PaymentTransaction)"
+        },
+        "riderId": {
+          "type": "string",
+          "description": "Reference to the RiderProfile involved in this transaction (receiver for payout/commission). Optional. (Relationship: RiderProfile 1:N PaymentTransaction)"
+        },
+        "amount": {
+          "type": "number",
+          "description": "The monetary amount of the transaction."
+        },
+        "currency": {
+          "type": "string",
+          "description": "The currency code of the transaction (e.g., 'KSH', 'USD')."
+        },
+        "paymentMethod": {
+          "type": "string",
+          "description": "The method used for the payment (e.g., 'M-Pesa', 'Credit Card')."
+        },
+        "transactionType": {
+          "type": "string",
+          "description": "The type of transaction (e.g., 'RidePayment', 'ErrandPayment', 'RiderWithdrawal', 'PlatformFee')."
+        },
+        "transactionStatus": {
+          "type": "string",
+          "description": "The status of the transaction (e.g., 'Pending', 'Completed', 'Failed', 'Refunded')."
+        },
+        "transactionDate": {
+          "type": "string",
+          "description": "Timestamp when the transaction occurred.",
+          "format": "date-time"
+        },
+        "externalTransactionId": {
+          "type": "string",
+          "description": "An identifier from the external payment provider (e.g., M-Pesa transaction ID)."
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "amount",
+        "currency",
+        "paymentMethod",
+        "transactionType",
+        "transactionStatus",
+        "transactionDate"
+      ]
+    },
+    "RideFeedback": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "RideFeedback",
+      "type": "object",
+      "description": "Stores feedback provided by a user after completing a ride or errand.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the RideFeedback entity."
+        },
+        "rideRequestId": {
+          "type": "string",
+          "description": "Reference to the RideRequest this feedback pertains to. Optional if for an errand. (Relationship: RideRequest 1:N RideFeedback)"
+        },
+        "errandRequestId": {
+          "type": "string",
+          "description": "Reference to the ErrandRequest this feedback pertains to. Optional if for a ride. (Relationship: ErrandRequest 1:N RideFeedback)"
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to the UserProfile who provided the feedback. (Relationship: UserProfile 1:N RideFeedback)"
+        },
+        "riderId": {
+          "type": "string",
+          "description": "Reference to the RiderProfile who received the feedback. (Relationship: RiderProfile 1:N RideFeedback)"
+        },
+        "rating": {
+          "type": "number",
+          "description": "The star rating given by the user (typically 1-5)."
+        },
+        "comment": {
+          "type": "string",
+          "description": "Optional textual comments provided by the user."
+        },
+        "feedbackDate": {
+          "type": "string",
+          "description": "Timestamp when the feedback was submitted.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "riderId",
+        "rating",
+        "feedbackDate"
+      ]
+    },
+    "RiderWallet": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "RiderWallet",
+      "type": "object",
+      "description": "Manages a rider's financial balance, total earnings, and summary of completed trips.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the RiderWallet entity."
+        },
+        "riderId": {
+          "type": "string",
+          "description": "Reference to the RiderProfile associated with this wallet. (Relationship: RiderProfile 1:1 RiderWallet)"
+        },
+        "currentBalance": {
+          "type": "number",
+          "description": "The current available balance in the rider's wallet."
+        },
+        "totalEarnings": {
+          "type": "number",
+          "description": "The cumulative total earnings of the rider from all completed trips/errands."
+        },
+        "tripsCompleted": {
+          "type": "number",
+          "description": "The total number of rides and errands completed by the rider."
+        },
+        "lastWithdrawalDate": {
+          "type": "string",
+          "description": "Timestamp of the rider's last withdrawal from the wallet.",
+          "format": "date-time"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when the rider wallet was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp when the rider wallet was last updated.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "riderId",
+        "currentBalance",
+        "totalEarnings",
+        "tripsCompleted",
+        "createdAt"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/user_profiles/{userId}",
+        "definition": {
+          "entityName": "UserProfile",
+          "schema": {
+            "$ref": "#/backend/entities/UserProfile"
+          },
+          "description": "Stores individual user profiles. The document ID `{userId}` MUST match the Firebase Authentication UID of the user. This path uses path-based ownership for secure user access."
+        }
+      },
+      {
+        "path": "/rider_profiles/{riderId}",
+        "definition": {
+          "entityName": "RiderProfile",
+          "schema": {
+            "$ref": "#/backend/entities/RiderProfile"
+          },
+          "description": "Stores individual rider profiles. The document ID `{riderId}` MUST match the Firebase Authentication UID of the rider. This path uses path-based ownership for secure rider access. The `externalAuthId` field within the document also redundantly stores the rider's UID for rule clarity.",
+          "params": [
+            {
+              "name": "riderId",
+              "description": "The unique Firebase Authentication UID of the rider."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/ride_requests/{rideRequestId}",
+        "definition": {
+          "entityName": "RideRequest",
+          "schema": {
+            "$ref": "#/backend/entities/RideRequest"
+          },
+          "description": "Contains all ride requests made by users. Includes denormalized `userId` and `riderId` fields for authorization independence, allowing both the user who made the request and the assigned rider to access their respective ride details without hierarchical lookups.",
+          "params": [
+            {
+              "name": "rideRequestId",
+              "description": "The unique identifier for a specific ride request."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/errand_requests/{errandRequestId}",
+        "definition": {
+          "entityName": "ErrandRequest",
+          "schema": {
+            "$ref": "#/backend/entities/ErrandRequest"
+          },
+          "description": "Contains all errand requests made by users. This new collection includes denormalized `userId` and `riderId` fields for authorization independence, enabling both the requesting user and the assigned rider to securely access errand details.",
+          "params": [
+            {
+              "name": "errandRequestId",
+              "description": "The unique identifier for a specific errand request."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/payment_transactions/{transactionId}",
+        "definition": {
+          "entityName": "PaymentTransaction",
+          "schema": {
+            "$ref": "#/backend/entities/PaymentTransaction"
+          },
+          "description": "Records all financial transactions. Includes denormalized `userId` and optionally `riderId` fields for authorization independence, allowing the user (payer) and associated rider to view relevant transactions without hierarchical lookups.",
+          "params": [
+            {
+              "name": "transactionId",
+              "description": "The unique identifier for a specific payment transaction."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/ride_feedback/{feedbackId}",
+        "definition": {
+          "entityName": "RideFeedback",
+          "schema": {
+            "$ref": "#/backend/entities/RideFeedback"
+          },
+          "description": "Stores all ride and errand feedback. Includes denormalized `userId` (who gave feedback) and `riderId` (who received feedback) fields for authorization independence, allowing both parties to access their respective feedback records.",
+          "params": [
+            {
+              "name": "feedbackId",
+              "description": "The unique identifier for a specific feedback entry."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/rider_wallets/{riderId}",
+        "definition": {
+          "entityName": "RiderWallet",
+          "schema": {
+            "$ref": "#/backend/entities/RiderWallet"
+          },
+          "description": "Manages individual rider financial wallets. The document ID `{riderId}` MUST match the Firebase Authentication UID of the rider, ensuring direct path-based ownership. The `riderId` field within the document also redundantly stores the rider's UID.",
+          "params": [
+            {
+              "name": "riderId",
+              "description": "The unique Firebase Authentication UID of the rider to whom the wallet belongs."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The Firestore structure is designed to be secure, scalable, and debuggable by strictly adhering to the core design principles, especially Authorization Independence and Structural Segregation.\n\n**Authorization Independence via Denormalization:**\nFor all transactional and collaborative entities such as `RideRequest`, `ErrandRequest`, `PaymentTransaction`, and `RideFeedback`, the `userId` and `riderId` (if applicable) are explicitly stored within each document. This denormalization is critical as it eliminates the need for expensive and insecure `get()` calls in Firestore security rules to check parent documents for authorization context. For example, to check if a user can access a `RideRequest`, rules only need to verify `request.auth.uid == resource.data.userId` or `request.auth.uid == resource.data.riderId`. This design ensures atomic operations (transactions/batches) remain robust and makes security rules straightforward and highly performant.\n\nFor `UserProfile`, `RiderProfile`, and `RiderWallet`, the document ID itself corresponds to `request.auth.uid` (or `externalAuthId` for `RiderProfile`), directly establishing ownership and eliminating any authorization dependencies.\n\n**Structural Segregation and QAPs (Queries as Authorization Primitives):**\nEach top-level collection is designed to hold documents with a homogeneous security posture, simplifying security rules. For instance, all documents in `/ride_requests` have the same access requirements, governed by the `userId` and `riderId` fields within them. This segregation allows for easy-to-understand and maintain security rules.\n\nThe structure facilitates robust QAPs:\n*   **User-specific lists:** Users can efficiently query their own ride requests (`/ride_requests?userId=<uid>`), errand requests (`/errand_requests?userId=<uid>`), payment transactions (`/payment_transactions?userId=<uid>`), and feedback (`/ride_feedback?userId=<uid>`) using simple `where` clauses on the denormalized `userId` field.\n*   **Rider-specific lists:** Similarly, riders can query their assigned ride requests (`/ride_requests?riderId=<uid>`), errand requests (`/errand_requests?riderId=<uid>`), payment transactions (`/payment_transactions?riderId=<uid>`), and received feedback (`/ride_feedback?riderId=<uid>`) using `where` clauses on the denormalized `riderId` field.\n*   **Direct access:** User profiles (`/user_profiles/{userId}`), rider profiles (`/rider_profiles/{riderId}`), and rider wallets (`/rider_wallets/{riderId}`) are directly accessible by their respective owners using `request.auth.uid` in the path, making `get()` operations secure and fast.\n\nThis design ensures that client-side queries can be directly translated into secure server-side authorization checks without complex rule logic, thus minimizing the risk of data leakage and improving debugging efficiency."
+  }
+}
