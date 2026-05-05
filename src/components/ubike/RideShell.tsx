@@ -69,24 +69,26 @@ export default function RideShell() {
 
   return (
     <div className="relative min-h-screen flex flex-col bg-white overflow-hidden">
-      {/* Background Breathing Image */}
+      {/* Enhanced Hero Background Section */}
       {state === 'LANDING' && (
-        <div className="absolute inset-0 z-0 bg-white">
-          <Image
-            src={heroImage?.imageUrl || "https://picsum.photos/seed/electric-motorbike/1920/1080"}
-            alt="Modern Electric Motorbike"
-            fill
-            className="object-cover opacity-30 animate-breathing blur-[6px]"
-            priority
-            data-ai-hint="electric motorbike"
-          />
-          {/* Layered Gradient Overlay for Premium Feel & Readability */}
-          <div className="absolute inset-0 bg-white/40 z-10" />
-          <div className="absolute inset-0 bg-gradient-to-b from-white/80 via-transparent to-white z-20" />
+        <div className="absolute inset-0 z-0 bg-white overflow-hidden">
+          <div className="relative w-full h-full scale-105 animate-breathing">
+            <Image
+              src={heroImage?.imageUrl || "https://picsum.photos/seed/spiro-premium-moto/1920/1080"}
+              alt="Premium Electric Motorbike"
+              fill
+              className="object-cover opacity-30 blur-[4px]"
+              priority
+              data-ai-hint="electric motorbike"
+            />
+          </div>
+          {/* Refined Layered White Gradients for Readability */}
+          <div className="absolute inset-0 bg-white/20 z-10" />
+          <div className="absolute inset-0 bg-gradient-to-b from-white/60 via-transparent to-white z-20" />
         </div>
       )}
 
-      {/* Navigation */}
+      {/* Navigation - Untouched per requirements */}
       <nav className="relative z-50 flex items-center justify-between px-8 py-6 w-full max-w-7xl mx-auto">
         <Logo className="h-10 cursor-pointer" />
         <div className="flex items-center gap-8">
@@ -102,11 +104,11 @@ export default function RideShell() {
         </div>
       </nav>
 
-      {/* Main Content Area */}
+      {/* Main Content Area - Layout Untouched */}
       <main className="relative z-30 flex-1 flex flex-col items-center justify-center p-6">
         <div className="w-full max-w-xl animate-fade-in">
           
-          {/* 1. LANDING / HERO FORM */}
+          {/* LANDING / HERO FORM - Untouched per requirements */}
           {state === 'LANDING' && (
             <div className="space-y-12 text-center">
               <div className="space-y-2">
@@ -180,7 +182,7 @@ export default function RideShell() {
             </div>
           )}
 
-          {/* 2. BOOKING SUMMARY */}
+          {/* Subsequent states remain untouched per requirements */}
           {state === 'BOOKING_PANEL' && (
             <div className="space-y-6">
               <div className="flex items-center gap-4 mb-2">
@@ -230,7 +232,6 @@ export default function RideShell() {
             </div>
           )}
 
-          {/* 3. MATCHING */}
           {state === 'MATCHING' && (
             <div className="text-center space-y-8 py-12">
               <div className="relative flex items-center justify-center">
@@ -246,7 +247,6 @@ export default function RideShell() {
             </div>
           )}
 
-          {/* 4. RIDE IN PROGRESS */}
           {state === 'RIDE_IN_PROGRESS' && matchedRider && (
             <div className="space-y-6">
               <div className="flex justify-between items-center bg-white border border-border/50 p-6 rounded-3xl shadow-sm">
@@ -299,7 +299,6 @@ export default function RideShell() {
             </div>
           )}
 
-          {/* 5. POST RIDE */}
           {state === 'POST_RIDE' && (
             <div className="text-center space-y-12">
               <div className="space-y-4">
@@ -332,7 +331,6 @@ export default function RideShell() {
             </div>
           )}
 
-          {/* 6. RIDER DASHBOARD SIMULATION */}
           {state === 'RIDER_DASHBOARD' && (
             <div className="space-y-8">
               <div className="flex items-center justify-between">
