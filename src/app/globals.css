@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -35,7 +36,6 @@
     @apply antialiased min-h-screen selection:bg-primary/30;
     font-family: 'Poppins', sans-serif;
     font-feature-settings: "rlig" 1, "calt" 1;
-    /* Custom mesh gradient recreating the provided abstract image */
     background: 
       radial-gradient(at 0% 0%, #7ee8fa 0%, transparent 50%),
       radial-gradient(at 100% 20%, #2080ff 0%, transparent 50%),
@@ -63,11 +63,20 @@
   animation: breathing 10s ease-in-out infinite;
 }
 
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 .animate-fade-in {
   animation: fadeIn 0.8s ease-out forwards;
 }
 
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(20px); }
-  to { opacity: 1; transform: translateY(0); }
+@keyframes spin-slow {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.animate-spin-slow {
+  animation: spin-slow 12s linear infinite;
 }

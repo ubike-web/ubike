@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState } from 'react';
@@ -15,29 +16,10 @@ import { MapPin, Navigation, Zap, Bike, Star, ShieldAlert, MessageCircle, ArrowL
 import { calculateFare, MOCK_RIDERS, MOCK_TRAFFIC, MOCK_REQUESTS, type RideType } from '@/lib/ride-service';
 import { smartRiderMatcher, type SmartRiderMatcherOutput } from '@/ai/flows/smart-rider-matcher-flow';
 import { analyzePostRideFeedback } from '@/ai/flows/post-ride-feedback-analyzer-flow';
+import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { cn } from '@/lib/utils';
 
 type FlowState = 'LANDING' | 'BOOKING_PANEL' | 'MATCHING' | 'RIDE_IN_PROGRESS' | 'POST_RIDE' | 'RIDER_DASHBOARD';
-
-const HelmetIcon = ({ className }: { className?: string }) => (
-  <svg 
-    viewBox="0 0 24 24" 
-    fill="none" 
-    xmlns="http://www.w3.org/2000/svg" 
-    className={className}
-  >
-    <path 
-      d="M12 2C7.03 2 3 6.03 3 11V16.5C3 18.43 4.57 20 6.5 20H7.5V21.5C7.5 21.78 7.72 22 8 22H16C16.28 22 16.5 21.78 16.5 21.5V20H17.5C19.43 20 21 18.43 21 16.5V11C21 6.03 16.97 2 12 2Z" 
-      fill="currentColor"
-    />
-    <path 
-      d="M4 11C4 11 7 10 12 10C17 10 20 11 20 11V13.5C20 13.5 17 12.5 12 12.5C7 12.5 4 13.5 4 13.5V11Z" 
-      fill="white" 
-      fillOpacity="0.4"
-    />
-    <rect x="9" y="16" width="6" height="2" rx="1" fill="white" fillOpacity="0.2" />
-  </svg>
-);
 
 export default function RideShell() {
   const [state, setState] = useState<FlowState>('LANDING');
@@ -51,6 +33,8 @@ export default function RideShell() {
   const [feedback, setFeedback] = useState('');
   const [rating, setRating] = useState(0);
   const [rideRequests, setRideRequests] = useState(MOCK_REQUESTS);
+
+  const spinningBike = PlaceHolderImages.find(img => img.id === 'spinning-bike');
 
   const distance = pickup && destination ? 5.2 : 0;
   const estimatedFare = calculateFare(distance, rideType);
@@ -134,8 +118,16 @@ export default function RideShell() {
                     u-bike
                   </h1>
 
-                  <div className="py-2 animate-[spin_12s_linear_infinite] opacity-90">
-                    <HelmetIcon className="w-12 h-12 text-primary" />
+                  <div className="relative w-24 h-24 my-4 animate-spin-slow">
+                    {spinningBike && (
+                      <Image 
+                        src={spinningBike.imageUrl}
+                        alt="Spinning Bike"
+                        fill
+                        className="object-contain"
+                        data-ai-hint={spinningBike.imageHint}
+                      />
+                    )}
                   </div>
 
                   <p className="text-foreground/60 text-lg font-medium tracking-wide">

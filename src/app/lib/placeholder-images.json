@@ -1,0 +1,17 @@
+
+{
+  "placeholderImages": [
+    {
+      "id": "hero-motorbike",
+      "description": "Local Boxer 150 motorbike boda boda side view urban road",
+      "imageUrl": "https://picsum.photos/seed/boda-boxer-premium/1920/1080",
+      "imageHint": "motorbike"
+    },
+    {
+      "id": "spinning-bike",
+      "description": "3D orange stylized motorcycle isolated",
+      "imageUrl": "https://picsum.photos/seed/orange-bike-3d/400/400",
+      "imageHint": "motorcycle orange"
+    }
+  ]
+}
