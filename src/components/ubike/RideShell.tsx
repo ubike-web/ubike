@@ -82,17 +82,17 @@ export default function RideShell() {
         <div className="absolute inset-0 z-0 bg-[#2E2B26] overflow-hidden">
           <div className="relative w-full h-full scale-105 animate-breathing">
             <Image
-              src={heroImage?.imageUrl || "https://picsum.photos/seed/ubike-moto-premium-urban/1920/1080"}
-              alt="Premium Motorbike"
+              src={heroImage?.imageUrl || "https://picsum.photos/seed/boda-boxer-premium/1920/1080"}
+              alt="Local Motorbike"
               fill
-              className="object-cover opacity-35 blur-[2px]"
+              className="object-cover opacity-30 blur-sm"
               priority
-              data-ai-hint="motorcycle"
+              data-ai-hint="motorbike"
             />
           </div>
-          {/* Charcoal Overlay Layers */}
-          <div className="absolute inset-0 bg-black/30 z-10" />
-          <div className="absolute inset-0 bg-gradient-to-b from-[#2E2B26]/80 via-transparent to-[#2E2B26] z-20" />
+          {/* Charcoal Overlay Layers for contrast */}
+          <div className="absolute inset-0 bg-black/20 z-10" />
+          <div className="absolute inset-0 bg-gradient-to-b from-[#2E2B26]/60 via-transparent to-[#2E2B26] z-20" />
         </div>
       )}
 
