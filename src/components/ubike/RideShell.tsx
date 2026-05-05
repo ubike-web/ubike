@@ -113,19 +113,20 @@ export default function RideShell() {
           {state === 'LANDING' && (
             <>
               <div className="space-y-12 text-center">
-                <div className="space-y-4 flex flex-col items-center">
-                  <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-foreground lowercase">
+                <div className="space-y-2 flex flex-col items-center">
+                  <h1 className="text-4xl md:text-6xl font-black tracking-tighter text-foreground lowercase">
                     u-bike
                   </h1>
 
                   {/* SPINNING MOTORCYCLE IMAGE */}
-                  <div className="relative w-24 h-24 my-4 animate-spin-slow">
+                  <div className="relative w-40 h-40 -my-4 animate-spin-3d flex items-center justify-center">
                     {spinningBike && (
                       <Image 
                         src={spinningBike.imageUrl}
                         alt="Spinning Bike"
                         fill
-                        className="object-contain"
+                        className="object-contain drop-shadow-2xl"
+                        priority
                         data-ai-hint={spinningBike.imageHint}
                       />
                     )}
@@ -136,20 +137,20 @@ export default function RideShell() {
                   </p>
                 </div>
 
-                <Card className="glass-morphism border-none shadow-2xl rounded-3xl overflow-hidden">
+                <Card className="glass-morphism border-none shadow-2xl rounded-[2.5rem] overflow-hidden">
                   <CardContent className="p-0">
                     <Tabs defaultValue="Normal" onValueChange={(v) => setRideType(v as RideType)} className="w-full">
                       <TabsList className="grid w-full grid-cols-2 h-16 bg-muted/30 p-2 gap-2">
                         <TabsTrigger 
                           value="Normal" 
-                          className="rounded-2xl data-[state=active]:bg-white data-[state=active]:text-foreground h-full transition-all"
+                          className="rounded-[1.8rem] data-[state=active]:bg-white data-[state=active]:text-foreground h-full transition-all"
                         >
                           <Bike className="w-4 h-4 mr-2" />
                           Standard
                         </TabsTrigger>
                         <TabsTrigger 
                           value="Electric" 
-                          className="rounded-2xl data-[state=active]:bg-white data-[state=active]:text-foreground h-full transition-all"
+                          className="rounded-[1.8rem] data-[state=active]:bg-white data-[state=active]:text-foreground h-full transition-all"
                         >
                           <Zap className="w-4 h-4 mr-2 text-primary" />
                           Electric

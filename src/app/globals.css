@@ -24,7 +24,7 @@
     --border: 24 10% 90%;
     --input: 24 10% 90%;
     --ring: 24 100% 50%;
-    --radius: 1rem;
+    --radius: 1.5rem;
   }
 }
 
@@ -54,13 +54,14 @@
   @apply bg-white/40 backdrop-blur-xl border border-white/40 shadow-2xl;
 }
 
-@keyframes breathing {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.05); }
+@keyframes spin-3d {
+  from { transform: rotateY(0deg); }
+  to { transform: rotateY(360deg); }
 }
 
-.animate-breathing {
-  animation: breathing 10s ease-in-out infinite;
+.animate-spin-3d {
+  animation: spin-3d 6s linear infinite;
+  perspective: 1000px;
 }
 
 @keyframes fadeIn {
@@ -70,13 +71,4 @@
 
 .animate-fade-in {
   animation: fadeIn 0.8s ease-out forwards;
-}
-
-@keyframes spin-slow {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-}
-
-.animate-spin-slow {
-  animation: spin-slow 12s linear infinite;
 }
