@@ -19,6 +19,26 @@ import { cn } from '@/lib/utils';
 
 type FlowState = 'LANDING' | 'BOOKING_PANEL' | 'MATCHING' | 'RIDE_IN_PROGRESS' | 'POST_RIDE' | 'RIDER_DASHBOARD';
 
+const HelmetIcon = ({ className }: { className?: string }) => (
+  <svg 
+    viewBox="0 0 24 24" 
+    fill="none" 
+    xmlns="http://www.w3.org/2000/svg" 
+    className={className}
+  >
+    <path 
+      d="M12 2C7.03 2 3 6.03 3 11V16.5C3 18.43 4.57 20 6.5 20H7.5V21.5C7.5 21.78 7.72 22 8 22H16C16.28 22 16.5 21.78 16.5 21.5V20H17.5C19.43 20 21 18.43 21 16.5V11C21 6.03 16.97 2 12 2Z" 
+      fill="currentColor"
+    />
+    <path 
+      d="M4 11C4 11 7 10 12 10C17 10 20 11 20 11V13.5C20 13.5 17 12.5 12 12.5C7 12.5 4 13.5 4 13.5V11Z" 
+      fill="white" 
+      fillOpacity="0.4"
+    />
+    <rect x="9" y="16" width="6" height="2" rx="1" fill="white" fillOpacity="0.2" />
+  </svg>
+);
+
 export default function RideShell() {
   const [state, setState] = useState<FlowState>('LANDING');
   const [pickup, setPickup] = useState('');
@@ -76,7 +96,7 @@ export default function RideShell() {
     <div className="relative min-h-screen flex flex-col overflow-hidden">
       {/* Navigation */}
       <header className="relative z-50 w-full bg-white/10 backdrop-blur-md border-b border-white/20">
-        <nav className="flex items-center justify-between px-6 md:px-12 py-4 max-w-7xl mx-auto w-full transition-all duration-300">
+        <nav className="flex items-center justify-between px-6 md:px-12 py-5 max-w-7xl mx-auto w-full transition-all duration-300">
           <div className="flex items-center">
             <Logo 
               className="h-9 md:h-11 cursor-pointer hover:opacity-80 transition-opacity" 
@@ -84,15 +104,15 @@ export default function RideShell() {
             />
           </div>
           
-          <div className="flex items-center gap-4 md:gap-8">
-            <div className="hidden md:flex items-center gap-6">
+          <div className="flex items-center gap-6 md:gap-10">
+            <div className="hidden md:flex items-center gap-8">
               <button className="text-sm font-semibold text-foreground/70 hover:text-primary transition-colors">Safety</button>
               <button className="text-sm font-semibold text-foreground/70 hover:text-primary transition-colors">Support</button>
             </div>
             <Button 
               variant="outline"
               size="sm"
-              className="rounded-full border-primary/20 text-primary hover:bg-primary hover:text-white transition-all font-bold px-5"
+              className="rounded-full border-primary/30 text-primary hover:bg-primary hover:text-white transition-all font-bold px-6 py-5"
               onClick={() => setState('RIDER_DASHBOARD')}
             >
               Driver Portal
@@ -109,10 +129,15 @@ export default function RideShell() {
           {state === 'LANDING' && (
             <>
               <div className="space-y-12 text-center">
-                <div className="space-y-2">
+                <div className="space-y-4 flex flex-col items-center">
                   <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-foreground lowercase">
                     u-bike
                   </h1>
+
+                  <div className="py-2 animate-[spin_12s_linear_infinite] opacity-90">
+                    <HelmetIcon className="w-12 h-12 text-primary" />
+                  </div>
+
                   <p className="text-foreground/60 text-lg font-medium tracking-wide">
                     Premium motorbike mobility for the city.
                   </p>
