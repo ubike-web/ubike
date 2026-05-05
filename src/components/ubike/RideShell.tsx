@@ -168,7 +168,7 @@ export default function RideShell() {
                   </div>
 
                   <p className="text-foreground/60 text-lg font-medium tracking-wide max-w-md">
-                    Premium motorbike mobility for the city.
+                    premium motorbike mobility for Meru and rest of Kenya
                   </p>
                 </div>
 
