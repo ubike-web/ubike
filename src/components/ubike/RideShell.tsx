@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import { Logo } from './Logo';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -11,14 +12,14 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
-import { MapPin, Navigation, Zap, Bike, Star, ShieldAlert, MessageCircle, ArrowLeft, Loader2, User, Check, X, CloudRain, Sun, CloudDrizzle } from 'lucide-react';
-import { calculateFare, MOCK_RIDERS, MOCK_TRAFFIC, MOCK_REQUESTS, type RideType } from '@/lib/ride-service';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { MapPin, Navigation, Zap, Bike, Star, ShieldAlert, MessageCircle, ArrowLeft, Loader2, User, Check, X, CloudRain, Sun, CloudDrizzle, Package, LogIn, UserPlus } from 'lucide-react';
+import { calculateFare, calculateErrandFare, MOCK_RIDERS, MOCK_TRAFFIC, MOCK_REQUESTS, type RideType, type RiderServiceType } from '@/lib/ride-service';
 import { smartRiderMatcher, type SmartRiderMatcherOutput } from '@/ai/flows/smart-rider-matcher-flow';
 import { analyzePostRideFeedback } from '@/ai/flows/post-ride-feedback-analyzer-flow';
-import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { cn } from '@/lib/utils';
 
-type FlowState = 'LANDING' | 'BOOKING_PANEL' | 'MATCHING' | 'RIDE_IN_PROGRESS' | 'POST_RIDE' | 'RIDER_DASHBOARD';
+type FlowState = 'LANDING' | 'BOOKING_PANEL' | 'ERRANDS_PANEL' | 'MATCHING' | 'RIDE_IN_PROGRESS' | 'POST_RIDE' | 'RIDER_DASHBOARD' | 'RIDER_AUTH';
 type Weather = 'SUNNY' | 'RAINY' | 'DRIZZLE';
 
 export default function RideShell() {
@@ -27,6 +28,8 @@ export default function RideShell() {
   const [pickup, setPickup] = useState('');
   const [destination, setDestination] = useState('');
   const [rideType, setRideType] = useState<RideType>('Normal');
+  const [errandSize, setErrandSize] = useState('Small');
+  const [itemDescription, setItemDescription] = useState('');
   const [forSomeoneElse, setForSomeoneElse] = useState(false);
   const [passengerName, setPassengerName] = useState('');
   const [passengerPhone, setPassengerPhone] = useState('');
@@ -34,11 +37,15 @@ export default function RideShell() {
   const [feedback, setFeedback] = useState('');
   const [rating, setRating] = useState(0);
   const [rideRequests, setRideRequests] = useState(MOCK_REQUESTS);
+  
+  // Rider Auth State
+  const [authMode, setAuthMode] = useState<'LOGIN' | 'SIGNUP'>('LOGIN');
+  const [isRiderLoggedIn, setIsRiderLoggedIn] = useState(false);
 
-  const spinningBike = PlaceHolderImages.find(img => img.id === 'spinning-bike');
-
-  const distance = pickup && destination ? 5.2 : 0;
-  const estimatedFare = calculateFare(distance, rideType);
+  const distance = (pickup && destination) ? 5.2 : 0;
+  const estimatedFare = state === 'ERRANDS_PANEL' 
+    ? calculateErrandFare(distance, errandSize)
+    : calculateFare(distance, rideType);
 
   const startBooking = () => {
     if (pickup && destination) setState('BOOKING_PANEL');
@@ -57,7 +64,6 @@ export default function RideShell() {
       setMatchedRider(result);
       setTimeout(() => setState('RIDE_IN_PROGRESS'), 3000);
     } catch (error) {
-      console.error(error);
       setState('BOOKING_PANEL');
     }
   };
@@ -78,12 +84,12 @@ export default function RideShell() {
   };
 
   return (
-    <div className="relative min-h-screen flex flex-col overflow-hidden">
+    <div className="relative min-h-screen flex flex-col overflow-hidden bg-white">
       {/* Weather Overlay */}
       <div className="fixed inset-0 pointer-events-none z-0">
         {weather === 'RAINY' && (
           <>
-            <div className="absolute inset-0 bg-black/10 z-0 transition-opacity duration-1000" />
+            <div className="absolute inset-0 bg-black/5 z-0 transition-opacity duration-1000" />
             <div className="absolute inset-0 weather-rain z-10" />
           </>
         )}
@@ -96,27 +102,46 @@ export default function RideShell() {
       </div>
 
       {/* Navigation */}
-      <header className="relative z-50 w-full bg-white/10 backdrop-blur-md border-b border-white/20">
-        <nav className="flex items-center justify-between px-6 md:px-12 py-5 max-w-7xl mx-auto w-full transition-all duration-300">
+      <header className="relative z-50 w-full bg-white/40 backdrop-blur-xl border-b border-white/40 shadow-sm">
+        <nav className="flex items-center justify-between px-6 md:px-12 py-4 max-w-7xl mx-auto w-full">
           <div className="flex items-center">
             <Logo 
-              className="h-9 md:h-11 cursor-pointer hover:opacity-80 transition-opacity" 
+              className="h-9 md:h-10 cursor-pointer hover:opacity-80 transition-opacity" 
               onClick={() => setState('LANDING')} 
             />
           </div>
           
-          <div className="flex items-center gap-6 md:gap-10">
-            <div className="hidden md:flex items-center gap-8">
-              <button className="text-sm font-semibold text-foreground/70 hover:text-primary transition-colors">Safety</button>
-              <button className="text-sm font-semibold text-foreground/70 hover:text-primary transition-colors">Support</button>
+          <div className="flex items-center gap-4 md:gap-8">
+            <div className="hidden lg:flex items-center gap-8">
+              <button 
+                onClick={() => setState('LANDING')}
+                className="text-xs font-black uppercase tracking-widest text-foreground/40 hover:text-primary transition-colors"
+              >
+                Rides
+              </button>
+              <button 
+                onClick={() => setState('ERRANDS_PANEL')}
+                className="text-xs font-black uppercase tracking-widest text-foreground/40 hover:text-primary transition-colors"
+              >
+                Errands
+              </button>
             </div>
+
+            {/* Weather Widget */}
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/80 shadow-sm border border-border/40">
+              {weather === 'SUNNY' && <Sun className="w-4 h-4 text-orange-400" />}
+              {weather === 'RAINY' && <CloudRain className="w-4 h-4 text-blue-400" />}
+              {weather === 'DRIZZLE' && <CloudDrizzle className="w-4 h-4 text-blue-300" />}
+              <span className="text-[10px] font-bold uppercase tracking-wider text-foreground/60">{weather}</span>
+            </div>
+
             <Button 
               variant="outline"
               size="sm"
-              className="rounded-full border-primary/30 text-primary hover:bg-primary hover:text-white transition-all font-bold px-6 py-5"
-              onClick={() => setState('RIDER_DASHBOARD')}
+              className="rounded-full border-primary/20 text-primary hover:bg-primary hover:text-white transition-all font-bold px-4 h-9"
+              onClick={() => isRiderLoggedIn ? setState('RIDER_DASHBOARD') : setState('RIDER_AUTH')}
             >
-              Driver Portal
+              {isRiderLoggedIn ? 'Dashboard' : 'Driver Portal'}
             </Button>
           </div>
         </nav>
@@ -126,29 +151,20 @@ export default function RideShell() {
       <main className="relative z-30 flex-1 flex flex-col items-center justify-center p-6 pb-20">
         <div className="w-full max-w-xl animate-fade-in space-y-12">
           
-          {/* LANDING / HERO FORM */}
+          {/* LANDING / HERO */}
           {state === 'LANDING' && (
             <>
-              <div className="space-y-12 text-center">
+              <div className="space-y-10 text-center">
                 <div className="space-y-6 flex flex-col items-center">
                   <h1 className="text-4xl md:text-6xl font-black tracking-tighter text-foreground lowercase">
                     u-bike
                   </h1>
 
-                  {/* SPINNING MOTORCYCLE IMAGE */}
-                  <div className="relative w-64 h-64 z-10 animate-spin-3d flex items-center justify-center">
-                    {spinningBike ? (
-                      <Image 
-                        src={spinningBike.imageUrl}
-                        alt="Spinning Bike"
-                        fill
-                        className="object-contain drop-shadow-[0_20px_50px_rgba(255,102,0,0.3)]"
-                        priority
-                        data-ai-hint={spinningBike.imageHint}
-                      />
-                    ) : (
-                      <Bike className="w-24 h-24 text-primary opacity-50" />
-                    )}
+                  {/* WEATHER ICONS BETWEEN TEXTS */}
+                  <div className="flex items-center gap-8 py-4 opacity-40">
+                    <Sun className={cn("w-8 h-8 transition-all duration-700", weather === 'SUNNY' ? "text-orange-400 scale-125 opacity-100" : "text-foreground/20")} />
+                    <CloudDrizzle className={cn("w-8 h-8 transition-all duration-700", weather === 'DRIZZLE' ? "text-blue-300 scale-125 opacity-100" : "text-foreground/20")} />
+                    <CloudRain className={cn("w-8 h-8 transition-all duration-700", weather === 'RAINY' ? "text-blue-500 scale-125 opacity-100" : "text-foreground/20")} />
                   </div>
 
                   <p className="text-foreground/60 text-lg font-medium tracking-wide max-w-md">
@@ -160,17 +176,11 @@ export default function RideShell() {
                   <CardContent className="p-0">
                     <Tabs defaultValue="Normal" onValueChange={(v) => setRideType(v as RideType)} className="w-full">
                       <TabsList className="grid w-full grid-cols-2 h-16 bg-muted/30 p-2 gap-2">
-                        <TabsTrigger 
-                          value="Normal" 
-                          className="rounded-[1.8rem] data-[state=active]:bg-white data-[state=active]:text-foreground h-full transition-all"
-                        >
+                        <TabsTrigger value="Normal" className="rounded-[1.8rem] data-[state=active]:bg-white h-full transition-all">
                           <Bike className="w-4 h-4 mr-2" />
                           Standard
                         </TabsTrigger>
-                        <TabsTrigger 
-                          value="Electric" 
-                          className="rounded-[1.8rem] data-[state=active]:bg-white data-[state=active]:text-foreground h-full transition-all"
-                        >
+                        <TabsTrigger value="Electric" className="rounded-[1.8rem] data-[state=active]:bg-white h-full transition-all">
                           <Zap className="w-4 h-4 mr-2 text-primary" />
                           Electric
                         </TabsTrigger>
@@ -180,21 +190,11 @@ export default function RideShell() {
                         <div className="space-y-4">
                           <div className="relative">
                             <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-primary" />
-                            <Input 
-                              placeholder="Where from?" 
-                              className="pl-12 h-14 bg-white/90 border-none rounded-2xl text-lg focus:bg-white transition-all shadow-sm" 
-                              value={pickup}
-                              onChange={(e) => setPickup(e.target.value)}
-                            />
+                            <Input placeholder="Where from?" className="pl-12 h-14 bg-white/90 border-none rounded-2xl text-lg shadow-sm" value={pickup} onChange={(e) => setPickup(e.target.value)} />
                           </div>
                           <div className="relative">
                             <Navigation className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-primary" />
-                            <Input 
-                              placeholder="Where to?" 
-                              className="pl-12 h-14 bg-white/90 border-none rounded-2xl text-lg focus:bg-white transition-all shadow-sm"
-                              value={destination}
-                              onChange={(e) => setDestination(e.target.value)}
-                            />
+                            <Input placeholder="Where to?" className="pl-12 h-14 bg-white/90 border-none rounded-2xl text-lg shadow-sm" value={destination} onChange={(e) => setDestination(e.target.value)} />
                           </div>
                         </div>
 
@@ -205,10 +205,7 @@ export default function RideShell() {
                           </div>
                         )}
 
-                        <Button 
-                          className="w-full h-16 text-lg font-bold bg-primary hover:bg-primary/90 text-white rounded-2xl shadow-xl shadow-primary/20 transition-all hover:scale-[1.01]"
-                          onClick={startBooking}
-                        >
+                        <Button className="w-full h-16 text-lg font-bold bg-primary hover:bg-primary/90 text-white rounded-2xl shadow-xl shadow-primary/20" onClick={startBooking}>
                           Book Ride
                         </Button>
                       </div>
@@ -217,8 +214,8 @@ export default function RideShell() {
                 </Card>
               </div>
 
-              {/* Feature 1: Available Riders Preview */}
-              <div className="space-y-6 animate-in fade-in slide-in-from-bottom-8 duration-700 delay-300">
+              {/* Available Riders Preview */}
+              <div className="space-y-6">
                 <div className="flex items-center justify-between px-2">
                   <h3 className="text-xl font-bold tracking-tight">Available Riders Near You</h3>
                   <Badge variant="outline" className="rounded-full border-primary/20 text-primary font-bold">
@@ -230,33 +227,27 @@ export default function RideShell() {
                 <ScrollArea className="w-full whitespace-nowrap">
                   <div className="flex w-max space-x-4 p-1 pb-4">
                     {MOCK_RIDERS.map((rider) => (
-                      <Card key={rider.id} className="w-[200px] shrink-0 glass-morphism border-none shadow-lg rounded-2xl overflow-hidden hover:scale-105 transition-all duration-300 cursor-default">
-                        <div className="relative h-24 w-full bg-muted">
-                          <Image
-                            src={rider.imageUrl || `https://picsum.photos/seed/${rider.id}/400/300`}
-                            alt={rider.name}
-                            fill
-                            className="object-cover opacity-80"
-                            data-ai-hint="motorbike"
-                          />
+                      <Card key={rider.id} className="w-[220px] shrink-0 glass-morphism border-none shadow-lg rounded-3xl overflow-hidden hover:scale-105 transition-all cursor-default">
+                        <div className="relative h-28 w-full bg-muted">
+                          <Image src={rider.imageUrl} alt={rider.name} fill className="object-cover opacity-80" data-ai-hint="motorbike" />
                           <div className="absolute top-2 right-2">
-                            {rider.bikeType === 'Electric' ? (
-                              <Badge className="bg-white/90 text-primary border-none shadow-sm"><Zap className="w-3 h-3" /></Badge>
-                            ) : (
-                              <Badge className="bg-white/90 text-foreground/60 border-none shadow-sm"><Bike className="w-3 h-3" /></Badge>
-                            )}
+                            {rider.bikeType === 'Electric' ? <Badge className="bg-white/90 text-primary border-none"><Zap className="w-3 h-3" /></Badge> : <Badge className="bg-white/90 text-foreground/60 border-none"><Bike className="w-3 h-3" /></Badge>}
                           </div>
                         </div>
-                        <CardContent className="p-4 space-y-2">
+                        <CardContent className="p-5 space-y-3">
                           <div className="flex items-center justify-between">
-                            <p className="font-bold text-sm truncate">{rider.name}</p>
+                            <p className="font-bold text-sm">{rider.name}</p>
                             <span className="flex items-center gap-1 text-[10px] font-bold text-primary">
                               <Star className="w-3 h-3 fill-primary" /> {rider.rating}
                             </span>
                           </div>
                           <div className="flex items-center justify-between">
-                            <p className="text-[10px] text-foreground/40 font-medium uppercase tracking-wider">{rider.bikeType}</p>
-                            <p className="text-[9px] font-bold text-green-500 uppercase">Available</p>
+                            <p className="text-[10px] text-foreground/40 font-black uppercase tracking-widest">{rider.bikeType}</p>
+                            <Badge variant="secondary" className="text-[8px] h-4 bg-green-500/10 text-green-600 border-none">Available</Badge>
+                          </div>
+                          <div className="flex gap-1">
+                            {rider.services === 'Both' || rider.services === 'PassengerRides' ? <User className="w-3 h-3 text-foreground/30" /> : null}
+                            {rider.services === 'Both' || rider.services === 'Errands' ? <Package className="w-3 h-3 text-foreground/30" /> : null}
                           </div>
                         </CardContent>
                       </Card>
@@ -266,6 +257,111 @@ export default function RideShell() {
                 </ScrollArea>
               </div>
             </>
+          )}
+
+          {/* ERRANDS PANEL */}
+          {state === 'ERRANDS_PANEL' && (
+            <div className="space-y-6">
+              <div className="flex items-center gap-4 mb-2">
+                <Button variant="ghost" size="icon" onClick={() => setState('LANDING')} className="rounded-full hover:bg-muted">
+                  <ArrowLeft className="w-5 h-5" />
+                </Button>
+                <h2 className="text-2xl font-bold">Send a Rider for Errands</h2>
+              </div>
+
+              <Card className="glass-morphism rounded-3xl overflow-hidden">
+                <CardContent className="p-8 space-y-8">
+                  <div className="space-y-4">
+                    <div className="relative">
+                      <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-primary" />
+                      <Input placeholder="Pickup Location" className="pl-12 h-14 bg-white/50 border-none rounded-2xl" value={pickup} onChange={e => setPickup(e.target.value)} />
+                    </div>
+                    <div className="relative">
+                      <Navigation className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-primary" />
+                      <Input placeholder="Delivery Location" className="pl-12 h-14 bg-white/50 border-none rounded-2xl" value={destination} onChange={e => setDestination(e.target.value)} />
+                    </div>
+                    <Input placeholder="What are we picking up? (e.g. Documents, Groceries)" className="h-14 bg-white/50 border-none rounded-2xl" value={itemDescription} onChange={e => setItemDescription(e.target.value)} />
+                    
+                    <div className="space-y-2">
+                      <Label className="text-xs font-black uppercase tracking-widest text-foreground/40 px-2">Item Size</Label>
+                      <Select value={errandSize} onValueChange={setErrandSize}>
+                        <SelectTrigger className="h-14 bg-white/50 border-none rounded-2xl">
+                          <SelectValue placeholder="Select Size" />
+                        </SelectTrigger>
+                        <SelectContent className="rounded-2xl border-none shadow-xl">
+                          <SelectItem value="Small">Small (Envelope, Phone)</SelectItem>
+                          <SelectItem value="Medium">Medium (Shoebox, Small Bag)</SelectItem>
+                          <SelectItem value="Large">Large (Box, Grocery Bag)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  {pickup && destination && (
+                    <div className="pt-2">
+                      <p className="text-xs font-black uppercase tracking-widest text-foreground/40 mb-1">Estimated Price</p>
+                      <p className="text-3xl font-bold text-primary">{estimatedFare}</p>
+                    </div>
+                  )}
+
+                  <Button className="w-full h-16 bg-primary hover:bg-primary/90 text-white font-bold text-xl rounded-2xl shadow-lg" onClick={() => setState('MATCHING')}>
+                    Request Errand
+                  </Button>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          {/* RIDER AUTH */}
+          {state === 'RIDER_AUTH' && (
+            <div className="space-y-6">
+              <div className="flex items-center gap-4 mb-2">
+                <Button variant="ghost" size="icon" onClick={() => setState('LANDING')} className="rounded-full hover:bg-muted">
+                  <ArrowLeft className="w-5 h-5" />
+                </Button>
+                <h2 className="text-2xl font-bold">{authMode === 'LOGIN' ? 'Rider Login' : 'Rider Sign Up'}</h2>
+              </div>
+
+              <Card className="glass-morphism rounded-[2.5rem] overflow-hidden border-none shadow-2xl">
+                <CardContent className="p-10 space-y-8">
+                  <div className="space-y-5">
+                    {authMode === 'SIGNUP' && (
+                      <div className="relative">
+                        <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-foreground/20" />
+                        <Input placeholder="Full Name" className="pl-12 h-14 bg-white/50 border-none rounded-2xl" />
+                      </div>
+                    )}
+                    <div className="relative">
+                      <LogIn className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-foreground/20" />
+                      <Input placeholder="Phone Number" className="pl-12 h-14 bg-white/50 border-none rounded-2xl" />
+                    </div>
+                    {authMode === 'SIGNUP' && (
+                      <div className="relative">
+                        <Bike className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-foreground/20" />
+                        <Input placeholder="Bike Details (Model, Plate)" className="pl-12 h-14 bg-white/50 border-none rounded-2xl" />
+                      </div>
+                    )}
+                    <Input type="password" placeholder="Password" className="h-14 bg-white/50 border-none rounded-2xl px-6" />
+                  </div>
+
+                  <Button 
+                    className="w-full h-16 bg-primary hover:bg-primary/90 text-white font-bold text-xl rounded-2xl shadow-lg"
+                    onClick={() => { setIsRiderLoggedIn(true); setState('RIDER_DASHBOARD'); }}
+                  >
+                    {authMode === 'LOGIN' ? 'Login' : 'Join as Rider'}
+                  </Button>
+
+                  <div className="text-center">
+                    <button 
+                      className="text-sm font-bold text-primary hover:underline"
+                      onClick={() => setAuthMode(authMode === 'LOGIN' ? 'SIGNUP' : 'LOGIN')}
+                    >
+                      {authMode === 'LOGIN' ? "Don't have an account? Sign Up" : "Already have an account? Login"}
+                    </button>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
           )}
 
           {state === 'BOOKING_PANEL' && (
@@ -366,7 +462,7 @@ export default function RideShell() {
                         </div>
                       </div>
                     </div>
-                    <Button size="icon" variant="outline" className="h-14 w-14 rounded-2xl border-border hover:bg-muted shadow-sm">
+                    <Button size="icon" variant="outline" className="h-14 w-14 rounded-2xl border-border shadow-sm">
                       <MessageCircle className="w-6 h-6" />
                     </Button>
                   </div>
@@ -420,91 +516,112 @@ export default function RideShell() {
             <div className="space-y-8 animate-in fade-in duration-700">
               <div className="flex items-center justify-between">
                 <h2 className="text-3xl font-bold tracking-tight">Rider Portal</h2>
-                <Button variant="ghost" className="rounded-2xl" onClick={() => setState('LANDING')}>Exit</Button>
+                <div className="flex gap-2">
+                  <Button variant="outline" className="rounded-2xl border-primary/20 text-primary" onClick={() => setIsRiderLoggedIn(false)}>Logout</Button>
+                  <Button variant="ghost" className="rounded-2xl" onClick={() => setState('LANDING')}>Exit</Button>
+                </div>
               </div>
               
-              <Card className="bg-[#2E2B26] text-white rounded-3xl p-10 shadow-2xl border-none overflow-hidden relative">
-                <div className="absolute top-0 right-0 p-8 opacity-10">
+              <Card className="bg-[#2E2B26] text-white rounded-[2.5rem] p-10 shadow-2xl border-none overflow-hidden relative">
+                <div className="absolute top-0 right-0 p-10 opacity-10">
                   <Bike className="w-32 h-32" />
                 </div>
                 <div className="relative z-10 space-y-8">
-                  <div>
-                    <p className="text-white/50 text-xs font-black uppercase tracking-[0.2em] mb-2">Available Balance</p>
-                    <p className="text-5xl font-black">KES 14,200</p>
-                  </div>
-                  <div className="flex gap-10">
+                  <div className="flex justify-between items-start">
                     <div>
-                      <p className="text-white/40 text-xs font-bold mb-1">Weekly Trips</p>
+                      <p className="text-white/50 text-xs font-black uppercase tracking-[0.2em] mb-2">Available Balance</p>
+                      <p className="text-5xl font-black">KES 14,200</p>
+                    </div>
+                    <Badge className="bg-primary/20 text-primary border-none font-bold py-1.5 px-4 rounded-full">ACTIVE</Badge>
+                  </div>
+                  
+                  <div className="grid grid-cols-3 gap-6 pt-4">
+                    <div>
+                      <p className="text-white/40 text-[10px] font-black uppercase tracking-widest mb-1">Weekly Trips</p>
                       <p className="text-2xl font-bold">42</p>
                     </div>
                     <div>
-                      <p className="text-white/40 text-xs font-bold mb-1">Avg Rating</p>
-                      <p className="text-2xl font-bold">4.96</p>
+                      <p className="text-white/40 text-[10px] font-black uppercase tracking-widest mb-1">Avg Rating</p>
+                      <p className="text-2xl font-bold flex items-center gap-1"><Star className="w-4 h-4 fill-primary text-primary" /> 4.96</p>
+                    </div>
+                    <div>
+                      <p className="text-white/40 text-[10px] font-black uppercase tracking-widest mb-1">Level</p>
+                      <p className="text-2xl font-bold">Gold</p>
                     </div>
                   </div>
-                  <Button className="w-full h-14 bg-primary hover:bg-primary/90 text-white font-bold rounded-2xl">Cash Out</Button>
+
+                  <div className="flex flex-col gap-4">
+                    <div className="flex items-center justify-between bg-white/5 p-4 rounded-2xl border border-white/5">
+                      <div className="flex items-center gap-3">
+                        <Package className="w-5 h-5 text-primary" />
+                        <span className="text-sm font-medium">Errand Services</span>
+                      </div>
+                      <Switch defaultChecked />
+                    </div>
+                  </div>
+
+                  <Button className="w-full h-14 bg-primary hover:bg-primary/90 text-white font-bold rounded-2xl">Withdraw to M-Pesa</Button>
                 </div>
               </Card>
 
-              {/* Feature 2: Nearby Ride Requests */}
+              {/* Nearby Ride Requests */}
               <div className="space-y-6">
                 <div className="flex items-center justify-between px-2">
                   <h3 className="text-xl font-bold tracking-tight">Nearby Ride Requests</h3>
-                  <p className="text-xs font-medium text-foreground/40">{rideRequests.length} active requests</p>
+                  <Badge variant="secondary" className="bg-muted text-foreground/40 border-none px-3">{rideRequests.length} active</Badge>
                 </div>
                 
                 <div className="space-y-4">
                   {rideRequests.length > 0 ? (
                     rideRequests.map((req) => (
-                      <Card key={req.id} className="glass-morphism border-none shadow-lg rounded-3xl overflow-hidden animate-in slide-in-from-right duration-500">
-                        <CardContent className="p-6">
-                          <div className="flex justify-between items-start mb-6">
-                            <div className="space-y-4">
-                              <div className="flex items-start gap-3">
-                                <div className="mt-1 h-2 w-2 rounded-full bg-primary shrink-0" />
+                      <Card key={req.id} className="glass-morphism border-none shadow-lg rounded-[2rem] overflow-hidden">
+                        <CardContent className="p-8">
+                          <div className="flex justify-between items-start mb-8">
+                            <div className="space-y-5 flex-1">
+                              <div className="flex items-start gap-4">
+                                <div className="mt-1.5 h-2 w-2 rounded-full bg-primary shrink-0" />
                                 <div>
-                                  <p className="text-[10px] font-black uppercase tracking-widest text-foreground/40 mb-1">Pickup</p>
-                                  <p className="font-bold text-lg">{req.pickup}</p>
+                                  <p className="text-[10px] font-black uppercase tracking-widest text-foreground/30 mb-1">Pickup</p>
+                                  <p className="font-bold text-lg leading-tight">{req.pickup}</p>
                                 </div>
                               </div>
-                              <div className="flex items-start gap-3">
-                                <Navigation className="w-4 h-4 text-primary shrink-0" />
+                              <div className="flex items-start gap-4">
+                                <Navigation className="w-4 h-4 text-primary shrink-0 mt-1" />
                                 <div>
-                                  <p className="text-[10px] font-black uppercase tracking-widest text-foreground/40 mb-1">Destination</p>
-                                  <p className="font-bold text-lg">{req.destination}</p>
+                                  <p className="text-[10px] font-black uppercase tracking-widest text-foreground/30 mb-1">Destination</p>
+                                  <p className="font-bold text-lg leading-tight">{req.destination}</p>
                                 </div>
                               </div>
+                              {req.category === 'Errand' && (
+                                <div className="flex items-center gap-2 bg-primary/5 p-3 rounded-xl border border-primary/5">
+                                  <Package className="w-4 h-4 text-primary" />
+                                  <p className="text-xs font-medium">{req.description}</p>
+                                </div>
+                              )}
                             </div>
-                            <div className="text-right space-y-2">
-                              <Badge className="bg-primary/10 text-primary border-none font-bold uppercase text-[10px] tracking-widest">
-                                {req.type}
+                            <div className="text-right space-y-3">
+                              <Badge className="bg-primary/10 text-primary border-none font-black uppercase text-[9px] tracking-[0.2em] px-3">
+                                {req.category === 'Errand' ? 'ERRAND' : 'PASSENGER'}
                               </Badge>
-                              <p className="text-2xl font-black text-primary">{req.price}</p>
+                              <p className="text-3xl font-black text-primary">{req.price}</p>
                               <p className="text-xs font-bold text-foreground/30">{req.distance}</p>
                             </div>
                           </div>
                           
-                          <div className="flex gap-3 pt-2">
-                            <Button 
-                              variant="outline" 
-                              className="flex-1 h-14 rounded-2xl border-border hover:bg-destructive/5 hover:text-destructive transition-all"
-                              onClick={() => handleRequestAction(req.id)}
-                            >
-                              <X className="w-4 h-4 mr-2" /> Decline
+                          <div className="flex gap-4 pt-2">
+                            <Button variant="ghost" className="flex-1 h-14 rounded-2xl font-bold text-foreground/40 hover:text-destructive transition-all" onClick={() => handleRequestAction(req.id)}>
+                              Decline
                             </Button>
-                            <Button 
-                              className="flex-1 h-14 bg-primary text-white font-bold rounded-2xl shadow-lg shadow-primary/20 hover:scale-[1.02] transition-all"
-                              onClick={() => handleRequestAction(req.id)}
-                            >
-                              <Check className="w-4 h-4 mr-2" /> Accept
+                            <Button className="flex-1 h-14 bg-primary text-white font-bold rounded-2xl shadow-xl shadow-primary/20 hover:scale-[1.02] transition-all" onClick={() => handleRequestAction(req.id)}>
+                              Accept Request
                             </Button>
                           </div>
                         </CardContent>
                       </Card>
                     ))
                   ) : (
-                    <div className="text-center py-12 bg-muted/20 rounded-3xl border-2 border-dashed border-border/50">
-                      <p className="text-foreground/30 font-bold uppercase tracking-widest">Searching for requests...</p>
+                    <div className="text-center py-16 bg-muted/20 rounded-[2.5rem] border-2 border-dashed border-border/30">
+                      <p className="text-foreground/20 font-black uppercase tracking-[0.4em] text-xs">Waiting for incoming requests</p>
                     </div>
                   )}
                 </div>
@@ -515,30 +632,21 @@ export default function RideShell() {
         </div>
       </main>
 
-      <footer className="relative z-50 p-8 flex flex-col items-center gap-4">
-        {/* Weather Switcher */}
-        <div className="flex items-center gap-4 bg-white/10 backdrop-blur-md px-4 py-2 rounded-full border border-white/20">
-          <button 
-            onClick={() => setWeather('SUNNY')}
-            className={cn("p-2 rounded-full transition-all", weather === 'SUNNY' ? "bg-primary text-white" : "text-foreground/40 hover:text-primary")}
-          >
+      <footer className="relative z-50 p-8 flex flex-col items-center gap-6">
+        {/* Weather Switcher (Control for the Demo) */}
+        <div className="flex items-center gap-4 bg-white/60 backdrop-blur-md px-4 py-2 rounded-full border border-white/40 shadow-sm">
+          <button onClick={() => setWeather('SUNNY')} className={cn("p-2 rounded-full transition-all", weather === 'SUNNY' ? "bg-primary text-white shadow-lg shadow-primary/20" : "text-foreground/40 hover:text-primary")}>
             <Sun className="w-4 h-4" />
           </button>
-          <button 
-            onClick={() => setWeather('DRIZZLE')}
-            className={cn("p-2 rounded-full transition-all", weather === 'DRIZZLE' ? "bg-primary text-white" : "text-foreground/40 hover:text-primary")}
-          >
+          <button onClick={() => setWeather('DRIZZLE')} className={cn("p-2 rounded-full transition-all", weather === 'DRIZZLE' ? "bg-primary text-white shadow-lg shadow-primary/20" : "text-foreground/40 hover:text-primary")}>
             <CloudDrizzle className="w-4 h-4" />
           </button>
-          <button 
-            onClick={() => setWeather('RAINY')}
-            className={cn("p-2 rounded-full transition-all", weather === 'RAINY' ? "bg-primary text-white" : "text-foreground/40 hover:text-primary")}
-          >
+          <button onClick={() => setWeather('RAINY')} className={cn("p-2 rounded-full transition-all", weather === 'RAINY' ? "bg-primary text-white shadow-lg shadow-primary/20" : "text-foreground/40 hover:text-primary")}>
             <CloudRain className="w-4 h-4" />
           </button>
         </div>
         
-        <div className="text-[10px] font-black uppercase tracking-[0.4em] text-foreground/20 pointer-events-none">
+        <div className="text-[10px] font-black uppercase tracking-[0.5em] text-foreground/10 pointer-events-none text-center">
           u-bike global • premium mobility nairobi
         </div>
       </footer>
