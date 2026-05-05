@@ -5,15 +5,15 @@
 @layer base {
   :root {
     --background: 0 0% 100%;
-    --foreground: 24 10% 10%;
+    --foreground: 24 10% 15%; /* Soft Charcoal */
     --card: 0 0% 100%;
-    --card-foreground: 24 10% 10%;
+    --card-foreground: 24 10% 15%;
     --popover: 0 0% 100%;
-    --popover-foreground: 24 10% 10%;
-    --primary: 24 100% 50%; /* Vibrant Orange */
+    --popover-foreground: 24 10% 15%;
+    --primary: 24 100% 50%; /* Refined Orange */
     --primary-foreground: 0 0% 100%;
     --secondary: 24 20% 96%;
-    --secondary-foreground: 24 10% 10%;
+    --secondary-foreground: 24 10% 15%;
     --muted: 24 20% 96%;
     --muted-foreground: 24 10% 45%;
     --accent: 24 100% 50%;
@@ -23,7 +23,7 @@
     --border: 24 10% 90%;
     --input: 24 10% 90%;
     --ring: 24 100% 50%;
-    --radius: 0.75rem;
+    --radius: 1rem;
   }
 }
 
@@ -33,18 +33,29 @@
   }
   body {
     @apply bg-background text-foreground selection:bg-primary/30;
+    font-family: 'Poppins', sans-serif;
     font-feature-settings: "rlig" 1, "calt" 1;
   }
 }
 
 .glass-morphism {
-  @apply bg-white/70 backdrop-blur-lg border border-black/5 shadow-sm;
+  @apply bg-white/40 backdrop-blur-xl border border-white/40 shadow-2xl;
 }
 
-.glow-orange {
-  box-shadow: 0 0 15px rgba(255, 122, 0, 0.2);
+@keyframes breathing {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
 }
 
-.animate-pulse-subtle {
-  animation: pulse-subtle 2s infinite ease-in-out;
+.animate-breathing {
+  animation: breathing 10s ease-in-out infinite;
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.8s ease-out forwards;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
 }

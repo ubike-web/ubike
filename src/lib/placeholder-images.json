@@ -1,3 +1,10 @@
 {
-  "placeholderImages": []
+  "placeholderImages": [
+    {
+      "id": "hero-motorbike",
+      "description": "Premium Motorbike in City",
+      "imageUrl": "https://picsum.photos/seed/motorbike77/1920/1080",
+      "imageHint": "motorbike street"
+    }
+  ]
 }
