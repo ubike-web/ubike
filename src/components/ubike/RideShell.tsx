@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState } from 'react';
@@ -12,7 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
-import { MapPin, Navigation, Zap, Bike, Star, ShieldAlert, MessageCircle, ArrowLeft, Loader2, User, Check, X } from 'lucide-react';
+import { MapPin, Navigation, Zap, Bike, Star, ShieldAlert, MessageCircle, ArrowLeft, Loader2, User, Check, X, CloudRain, Sun, CloudDrizzle } from 'lucide-react';
 import { calculateFare, MOCK_RIDERS, MOCK_TRAFFIC, MOCK_REQUESTS, type RideType } from '@/lib/ride-service';
 import { smartRiderMatcher, type SmartRiderMatcherOutput } from '@/ai/flows/smart-rider-matcher-flow';
 import { analyzePostRideFeedback } from '@/ai/flows/post-ride-feedback-analyzer-flow';
@@ -20,9 +19,11 @@ import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { cn } from '@/lib/utils';
 
 type FlowState = 'LANDING' | 'BOOKING_PANEL' | 'MATCHING' | 'RIDE_IN_PROGRESS' | 'POST_RIDE' | 'RIDER_DASHBOARD';
+type Weather = 'SUNNY' | 'RAINY' | 'DRIZZLE';
 
 export default function RideShell() {
   const [state, setState] = useState<FlowState>('LANDING');
+  const [weather, setWeather] = useState<Weather>('SUNNY');
   const [pickup, setPickup] = useState('');
   const [destination, setDestination] = useState('');
   const [rideType, setRideType] = useState<RideType>('Normal');
@@ -78,6 +79,22 @@ export default function RideShell() {
 
   return (
     <div className="relative min-h-screen flex flex-col overflow-hidden">
+      {/* Weather Overlay */}
+      <div className="fixed inset-0 pointer-events-none z-0">
+        {weather === 'RAINY' && (
+          <>
+            <div className="absolute inset-0 bg-black/10 z-0 transition-opacity duration-1000" />
+            <div className="absolute inset-0 weather-rain z-10" />
+          </>
+        )}
+        {weather === 'DRIZZLE' && (
+          <div className="absolute inset-0 weather-drizzle z-10" />
+        )}
+        {weather === 'SUNNY' && (
+          <div className="absolute inset-0 weather-sunny z-10" />
+        )}
+      </div>
+
       {/* Navigation */}
       <header className="relative z-50 w-full bg-white/10 backdrop-blur-md border-b border-white/20">
         <nav className="flex items-center justify-between px-6 md:px-12 py-5 max-w-7xl mx-auto w-full transition-all duration-300">
@@ -498,8 +515,32 @@ export default function RideShell() {
         </div>
       </main>
 
-      <footer className="relative z-50 p-8 text-center text-[10px] font-black uppercase tracking-[0.4em] text-foreground/20 pointer-events-none">
-        u-bike global • premium mobility nairobi
+      <footer className="relative z-50 p-8 flex flex-col items-center gap-4">
+        {/* Weather Switcher */}
+        <div className="flex items-center gap-4 bg-white/10 backdrop-blur-md px-4 py-2 rounded-full border border-white/20">
+          <button 
+            onClick={() => setWeather('SUNNY')}
+            className={cn("p-2 rounded-full transition-all", weather === 'SUNNY' ? "bg-primary text-white" : "text-foreground/40 hover:text-primary")}
+          >
+            <Sun className="w-4 h-4" />
+          </button>
+          <button 
+            onClick={() => setWeather('DRIZZLE')}
+            className={cn("p-2 rounded-full transition-all", weather === 'DRIZZLE' ? "bg-primary text-white" : "text-foreground/40 hover:text-primary")}
+          >
+            <CloudDrizzle className="w-4 h-4" />
+          </button>
+          <button 
+            onClick={() => setWeather('RAINY')}
+            className={cn("p-2 rounded-full transition-all", weather === 'RAINY' ? "bg-primary text-white" : "text-foreground/40 hover:text-primary")}
+          >
+            <CloudRain className="w-4 h-4" />
+          </button>
+        </div>
+        
+        <div className="text-[10px] font-black uppercase tracking-[0.4em] text-foreground/20 pointer-events-none">
+          u-bike global • premium mobility nairobi
+        </div>
       </footer>
     </div>
   );
