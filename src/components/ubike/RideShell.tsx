@@ -76,24 +76,24 @@ export default function RideShell() {
 
   return (
     <div className="relative min-h-screen flex flex-col bg-white overflow-hidden">
-      {/* Premium Charcoal Hero Background Section */}
+      {/* Premium White & Charcoal Hero Background Section */}
       {state === 'LANDING' && (
-        <div className="absolute inset-0 z-0 bg-[#1A1A1A] overflow-hidden">
-          {/* Subtle Radial Lighting (Center slightly lighter, warm charcoal) */}
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_40%,rgba(52,50,48,1)_0%,rgba(26,25,24,1)_100%)]" />
+        <div className="absolute inset-0 z-0 bg-[#FDFCFB] overflow-hidden">
+          {/* Soft Radial Base (Clean, warm off-white center) */}
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_40%,#FFFFFF_0%,#F5F5F4_100%)]" />
           
-          {/* Vignette Overlay (Darker edges for depth) */}
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_0%,rgba(0,0,0,0.6)_100%)] z-10" />
+          {/* Subtle Charcoal Vignette Overlay (Light grey edges for premium depth) */}
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_0%,rgba(26,25,24,0.04)_100%)] z-10" />
           
-          {/* Subtle Breathing Glow (Orange hint for brand consistency) */}
-          <div className="absolute inset-0 opacity-10 bg-[radial-gradient(circle_at_50%_40%,rgba(255,102,0,0.06)_0%,transparent_70%)] animate-pulse-subtle" />
+          {/* Very Subtle Gradient Shift Animation */}
+          <div className="absolute inset-0 opacity-20 bg-[linear-gradient(135deg,rgba(0,0,0,0.02)_0%,transparent_50%,rgba(0,0,0,0.02)_100%)] animate-pulse-subtle" />
         </div>
       )}
 
       {/* Navigation */}
       <nav className={cn(
         "relative z-50 flex items-center justify-between px-8 py-6 w-full max-w-7xl mx-auto transition-colors duration-500",
-        state === 'LANDING' ? "text-white" : "text-foreground"
+        "text-foreground"
       )}>
         <Logo className="h-10 cursor-pointer" onClick={() => setState('LANDING')} />
         <div className="flex items-center gap-8">
@@ -118,10 +118,10 @@ export default function RideShell() {
             <>
               <div className="space-y-12 text-center">
                 <div className="space-y-2">
-                  <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-white lowercase">
+                  <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-foreground lowercase">
                     u-bike
                   </h1>
-                  <p className="text-white/70 text-lg font-medium tracking-wide">
+                  <p className="text-foreground/60 text-lg font-medium tracking-wide">
                     Premium motorbike mobility for the city.
                   </p>
                 </div>
@@ -129,7 +129,7 @@ export default function RideShell() {
                 <Card className="glass-morphism border-none shadow-2xl rounded-3xl overflow-hidden">
                   <CardContent className="p-0">
                     <Tabs defaultValue="Normal" onValueChange={(v) => setRideType(v as RideType)} className="w-full">
-                      <TabsList className="grid w-full grid-cols-2 h-16 bg-white/10 p-2 gap-2">
+                      <TabsList className="grid w-full grid-cols-2 h-16 bg-muted/30 p-2 gap-2">
                         <TabsTrigger 
                           value="Normal" 
                           className="rounded-2xl data-[state=active]:bg-white data-[state=active]:text-foreground h-full transition-all"
