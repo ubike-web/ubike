@@ -13,7 +13,7 @@ import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { MapPin, Navigation, Zap, Bike, Star, ShieldAlert, MessageCircle, ArrowLeft, Loader2, User, Check, X, CloudRain, Sun, CloudDrizzle, Package, LogIn, UserPlus } from 'lucide-react';
+import { MapPin, Navigation, Zap, Bike, Star, ShieldAlert, MessageCircle, ArrowLeft, Loader2, User, Check, X, CloudRain, Sun, CloudDrizzle, Package, LogIn, UserPlus, Car } from 'lucide-react';
 import { calculateFare, calculateErrandFare, MOCK_RIDERS, MOCK_TRAFFIC, MOCK_REQUESTS, type RideType, type RiderServiceType } from '@/lib/ride-service';
 import { smartRiderMatcher, type SmartRiderMatcherOutput } from '@/ai/flows/smart-rider-matcher-flow';
 import { analyzePostRideFeedback } from '@/ai/flows/post-ride-feedback-analyzer-flow';
@@ -21,10 +21,12 @@ import { cn } from '@/lib/utils';
 
 type FlowState = 'LANDING' | 'BOOKING_PANEL' | 'ERRANDS_PANEL' | 'MATCHING' | 'RIDE_IN_PROGRESS' | 'POST_RIDE' | 'RIDER_DASHBOARD' | 'RIDER_AUTH';
 type Weather = 'SUNNY' | 'RAINY' | 'DRIZZLE';
+type ServiceType = 'RIDES' | 'ERRANDS' | 'MINI_CARS';
 
 export default function RideShell() {
   const [state, setState] = useState<FlowState>('LANDING');
   const [weather, setWeather] = useState<Weather>('SUNNY');
+  const [selectedService, setSelectedService] = useState<ServiceType>('RIDES');
   const [pickup, setPickup] = useState('');
   const [destination, setDestination] = useState('');
   const [rideType, setRideType] = useState<RideType>('Normal');
@@ -43,12 +45,18 @@ export default function RideShell() {
   const [isRiderLoggedIn, setIsRiderLoggedIn] = useState(false);
 
   const distance = (pickup && destination) ? 5.2 : 0;
-  const estimatedFare = state === 'ERRANDS_PANEL' 
+  const estimatedFare = selectedService === 'ERRANDS' 
     ? calculateErrandFare(distance, errandSize)
     : calculateFare(distance, rideType);
 
   const startBooking = () => {
-    if (pickup && destination) setState('BOOKING_PANEL');
+    if (pickup && destination) {
+      if (selectedService === 'ERRANDS') {
+        setState('ERRANDS_PANEL');
+      } else {
+        setState('BOOKING_PANEL');
+      }
+    }
   };
 
   const findRider = async () => {
@@ -107,21 +115,21 @@ export default function RideShell() {
           <div className="flex items-center">
             <Logo 
               className="h-9 md:h-10 cursor-pointer hover:opacity-80 transition-opacity" 
-              onClick={() => setState('LANDING')} 
+              onClick={() => { setState('LANDING'); setSelectedService('RIDES'); }} 
             />
           </div>
           
           <div className="flex items-center gap-4 md:gap-8">
             <div className="hidden lg:flex items-center gap-8">
               <button 
-                onClick={() => setState('LANDING')}
-                className="text-xs font-black uppercase tracking-widest text-foreground/40 hover:text-primary transition-colors"
+                onClick={() => { setState('LANDING'); setSelectedService('RIDES'); }}
+                className={cn("text-xs font-black uppercase tracking-widest transition-colors", selectedService === 'RIDES' && state === 'LANDING' ? "text-primary" : "text-foreground/40 hover:text-primary")}
               >
                 Rides
               </button>
               <button 
-                onClick={() => setState('ERRANDS_PANEL')}
-                className="text-xs font-black uppercase tracking-widest text-foreground/40 hover:text-primary transition-colors"
+                onClick={() => { setState('LANDING'); setSelectedService('ERRANDS'); }}
+                className={cn("text-xs font-black uppercase tracking-widest transition-colors", selectedService === 'ERRANDS' || state === 'ERRANDS_PANEL' ? "text-primary" : "text-foreground/40 hover:text-primary")}
               >
                 Errands
               </button>
@@ -172,44 +180,127 @@ export default function RideShell() {
                   </p>
                 </div>
 
+                {/* Service Selection Component */}
+                <div className="grid grid-cols-3 gap-3">
+                  <button 
+                    onClick={() => setSelectedService('RIDES')}
+                    className={cn(
+                      "flex flex-col items-center justify-center p-4 rounded-[2rem] transition-all duration-300 gap-2 border",
+                      selectedService === 'RIDES' 
+                        ? "bg-white shadow-xl border-white scale-105" 
+                        : "bg-white/40 border-white/20 hover:bg-white/60"
+                    )}
+                  >
+                    <div className={cn("p-2 rounded-xl", selectedService === 'RIDES' ? "bg-primary text-white" : "bg-primary/10 text-primary")}>
+                      <Bike className="w-5 h-5" />
+                    </div>
+                    <span className="text-[10px] font-black uppercase tracking-widest">Rides</span>
+                  </button>
+
+                  <button 
+                    onClick={() => setSelectedService('ERRANDS')}
+                    className={cn(
+                      "flex flex-col items-center justify-center p-4 rounded-[2rem] transition-all duration-300 gap-2 border",
+                      selectedService === 'ERRANDS' 
+                        ? "bg-white shadow-xl border-white scale-105" 
+                        : "bg-white/40 border-white/20 hover:bg-white/60"
+                    )}
+                  >
+                    <div className={cn("p-2 rounded-xl", selectedService === 'ERRANDS' ? "bg-primary text-white" : "bg-primary/10 text-primary")}>
+                      <Package className="w-5 h-5" />
+                    </div>
+                    <span className="text-[10px] font-black uppercase tracking-widest">Errands</span>
+                  </button>
+
+                  <div 
+                    className="relative flex flex-col items-center justify-center p-4 rounded-[2rem] transition-all duration-300 gap-2 border bg-white/20 border-white/10 opacity-60 cursor-not-allowed group"
+                  >
+                    <div className="p-2 rounded-xl bg-foreground/5 text-foreground/40">
+                      <Car className="w-5 h-5" />
+                    </div>
+                    <span className="text-[10px] font-black uppercase tracking-widest text-foreground/40">Mini Cars</span>
+                    <Badge variant="outline" className="absolute -top-2 px-2 py-0 h-4 text-[7px] font-black border-primary/20 text-primary bg-white/80">SOON</Badge>
+                  </div>
+                </div>
+
                 <Card className="glass-morphism border-none shadow-2xl rounded-[2.5rem] overflow-hidden">
                   <CardContent className="p-0">
-                    <Tabs defaultValue="Normal" onValueChange={(v) => setRideType(v as RideType)} className="w-full">
-                      <TabsList className="grid w-full grid-cols-2 h-16 bg-muted/30 p-2 gap-2">
-                        <TabsTrigger value="Normal" className="rounded-[1.8rem] data-[state=active]:bg-white h-full transition-all">
-                          <Bike className="w-4 h-4 mr-2" />
-                          Standard
-                        </TabsTrigger>
-                        <TabsTrigger value="Electric" className="rounded-[1.8rem] data-[state=active]:bg-white h-full transition-all">
-                          <Zap className="w-4 h-4 mr-2 text-primary" />
-                          Electric
-                        </TabsTrigger>
-                      </TabsList>
-                      
+                    {selectedService === 'RIDES' ? (
+                      <Tabs defaultValue="Normal" onValueChange={(v) => setRideType(v as RideType)} className="w-full">
+                        <TabsList className="grid w-full grid-cols-2 h-16 bg-muted/30 p-2 gap-2">
+                          <TabsTrigger value="Normal" className="rounded-[1.8rem] data-[state=active]:bg-white h-full transition-all">
+                            <Bike className="w-4 h-4 mr-2" />
+                            Standard
+                          </TabsTrigger>
+                          <TabsTrigger value="Electric" className="rounded-[1.8rem] data-[state=active]:bg-white h-full transition-all">
+                            <Zap className="w-4 h-4 mr-2 text-primary" />
+                            Electric
+                          </TabsTrigger>
+                        </TabsList>
+                        
+                        <div className="p-8 space-y-6">
+                          <div className="space-y-4">
+                            <div className="relative">
+                              <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-primary" />
+                              <Input placeholder="Where from?" className="pl-12 h-14 bg-white/90 border-none rounded-2xl text-lg shadow-sm" value={pickup} onChange={(e) => setPickup(e.target.value)} />
+                            </div>
+                            <div className="relative">
+                              <Navigation className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-primary" />
+                              <Input placeholder="Where to?" className="pl-12 h-14 bg-white/90 border-none rounded-2xl text-lg shadow-sm" value={destination} onChange={(e) => setDestination(e.target.value)} />
+                            </div>
+                          </div>
+
+                          {pickup && destination && (
+                            <div className="pt-2 text-left">
+                              <p className="text-xs font-bold text-foreground/40 uppercase tracking-widest mb-1">Estimated Fare</p>
+                              <p className="text-3xl font-bold text-primary">{estimatedFare}</p>
+                            </div>
+                          )}
+
+                          <Button className="w-full h-16 text-lg font-bold bg-primary hover:bg-primary/90 text-white rounded-2xl shadow-xl shadow-primary/20" onClick={startBooking}>
+                            Book Ride
+                          </Button>
+                        </div>
+                      </Tabs>
+                    ) : (
                       <div className="p-8 space-y-6">
                         <div className="space-y-4">
                           <div className="relative">
                             <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-primary" />
-                            <Input placeholder="Where from?" className="pl-12 h-14 bg-white/90 border-none rounded-2xl text-lg shadow-sm" value={pickup} onChange={(e) => setPickup(e.target.value)} />
+                            <Input placeholder="Pickup Location" className="pl-12 h-14 bg-white/90 border-none rounded-2xl text-lg shadow-sm" value={pickup} onChange={(e) => setPickup(e.target.value)} />
                           </div>
                           <div className="relative">
                             <Navigation className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-primary" />
-                            <Input placeholder="Where to?" className="pl-12 h-14 bg-white/90 border-none rounded-2xl text-lg shadow-sm" value={destination} onChange={(e) => setDestination(e.target.value)} />
+                            <Input placeholder="Delivery Location" className="pl-12 h-14 bg-white/90 border-none rounded-2xl text-lg shadow-sm" value={destination} onChange={(e) => setDestination(e.target.value)} />
                           </div>
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label className="text-[10px] font-black uppercase tracking-widest text-foreground/40 px-2">Item Size</Label>
+                          <Select value={errandSize} onValueChange={setErrandSize}>
+                            <SelectTrigger className="h-14 bg-white/90 border-none rounded-2xl shadow-sm">
+                              <SelectValue placeholder="Select Size" />
+                            </SelectTrigger>
+                            <SelectContent className="rounded-2xl border-none shadow-xl">
+                              <SelectItem value="Small">Small (Envelope, Phone)</SelectItem>
+                              <SelectItem value="Medium">Medium (Shoebox, Small Bag)</SelectItem>
+                              <SelectItem value="Large">Large (Box, Grocery Bag)</SelectItem>
+                            </SelectContent>
+                          </Select>
                         </div>
 
                         {pickup && destination && (
                           <div className="pt-2 text-left">
-                            <p className="text-xs font-bold text-foreground/40 uppercase tracking-widest mb-1">Estimated Fare</p>
+                            <p className="text-xs font-bold text-foreground/40 uppercase tracking-widest mb-1">Estimated Errand Fare</p>
                             <p className="text-3xl font-bold text-primary">{estimatedFare}</p>
                           </div>
                         )}
 
                         <Button className="w-full h-16 text-lg font-bold bg-primary hover:bg-primary/90 text-white rounded-2xl shadow-xl shadow-primary/20" onClick={startBooking}>
-                          Book Ride
+                          Request Errand
                         </Button>
                       </div>
-                    </Tabs>
+                    )}
                   </CardContent>
                 </Card>
               </div>
@@ -304,7 +395,7 @@ export default function RideShell() {
                     </div>
                   )}
 
-                  <Button className="w-full h-16 bg-primary hover:bg-primary/90 text-white font-bold text-xl rounded-2xl shadow-lg" onClick={() => setState('MATCHING')}>
+                  <Button className="w-full h-16 bg-primary hover:bg-primary/90 text-white font-bold text-xl rounded-2xl shadow-lg" onClick={findRider}>
                     Request Errand
                   </Button>
                 </CardContent>
@@ -441,7 +532,7 @@ export default function RideShell() {
                   </div>
                 </div>
                 <div className="text-right">
-                  <p className="text-2xl font-black text-primary">KES 250</p>
+                  <p className="text-2xl font-black text-primary">{selectedService === 'ERRANDS' ? estimatedFare : 'KES 250'}</p>
                 </div>
               </div>
 
