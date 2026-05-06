@@ -725,7 +725,10 @@ export default function RideShell() {
 
       <footer className="relative z-50 p-8 flex flex-col items-center gap-6">
         <div className="text-[10px] font-black uppercase tracking-[0.5em] text-foreground/10 pointer-events-none text-center">
-          u-bike global • premium mobility nairobi
+          u-bike global • premium mobility meru
+        </div>
+        <div className="text-[10px] font-black uppercase tracking-[0.5em] text-foreground/10 pointer-events-none text-center">
+          -Ralph tech-
         </div>
       </footer>
     </div>
