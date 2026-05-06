@@ -164,7 +164,7 @@ export default function RideShell() {
             <>
               <div className="space-y-10 text-center">
                 <div className="space-y-6 flex flex-col items-center">
-                  <h1 className="text-4xl md:text-6xl font-black tracking-tighter text-foreground lowercase">
+                  <h1 className="text-4xl md:text-6xl font-black tracking-widest text-foreground uppercase font-headline">
                     u-bike
                   </h1>
 
