@@ -12,13 +12,19 @@ import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { MapPin, Navigation, Zap, Bike, Star, ShieldAlert, MessageCircle, ArrowLeft, Loader2, User, Check, X, CloudRain, Sun, CloudDrizzle, Package, LogIn, ExternalLink, Map as MapIcon } from 'lucide-react';
+import { 
+  MapPin, Navigation, Zap, Bike, Star, ShieldAlert, MessageCircle, 
+  ArrowLeft, Loader2, User, Check, X, CloudRain, Sun, CloudDrizzle, 
+  Package, LogIn, ExternalLink, Map as MapIcon, Plus, ArrowUpRight, 
+  History, TrendingUp, PieChart, CreditCard, ArrowLeftRight, Settings,
+  DollarSign, Clock, BarChart3, ChevronRight
+} from 'lucide-react';
 import { calculateFare, calculateErrandFare, MOCK_RIDERS, MOCK_TRAFFIC, MOCK_REQUESTS, getGoogleMapsUrl, type RideType, type RiderServiceType } from '@/lib/ride-service';
 import { smartRiderMatcher, type SmartRiderMatcherOutput } from '@/ai/flows/smart-rider-matcher-flow';
 import { analyzePostRideFeedback } from '@/ai/flows/post-ride-feedback-analyzer-flow';
 import { cn } from '@/lib/utils';
 
-type FlowState = 'LANDING' | 'BOOKING_PANEL' | 'ERRANDS_PANEL' | 'MATCHING' | 'RIDE_IN_PROGRESS' | 'POST_RIDE' | 'RIDER_DASHBOARD' | 'RIDER_AUTH';
+type FlowState = 'LANDING' | 'BOOKING_PANEL' | 'ERRANDS_PANEL' | 'MATCHING' | 'RIDE_IN_PROGRESS' | 'POST_RIDE' | 'RIDER_DASHBOARD' | 'RIDER_AUTH' | 'RIDER_WALLET' | 'RIDER_ANALYTICS';
 type Weather = 'SUNNY' | 'RAINY' | 'DRIZZLE';
 type ServiceType = 'RIDES' | 'ERRANDS';
 
@@ -27,7 +33,7 @@ type ServiceType = 'RIDES' | 'ERRANDS';
  */
 function MapCard({ pickup, destination, isTracking = false }: { pickup: string; destination: string; isTracking?: boolean }) {
   return (
-    <div className="relative w-full h-48 md:h-64 bg-[#0F172A] rounded-[2.5rem] overflow-hidden shadow-inner group">
+    <div className="relative w-full h-48 md:h-64 bg-[#0F172A] rounded-[3.5rem] overflow-hidden shadow-inner group">
       {/* Abstract Map Grid */}
       <div className="absolute inset-0 opacity-20" style={{ backgroundImage: 'radial-gradient(#334155 1px, transparent 1px)', backgroundSize: '24px 24px' }} />
       
@@ -99,6 +105,10 @@ export default function RideShell() {
   const [rating, setRating] = useState(0);
   const [rideRequests, setRideRequests] = useState(MOCK_REQUESTS);
   
+  // Rider Wallet State
+  const [riderBalance, setRiderBalance] = useState(7584.00);
+  const [weeklyGrowth, setWeeklyGrowth] = useState(4.34);
+
   // Rider Auth State
   const [authMode, setAuthMode] = useState<'LOGIN' | 'SIGNUP'>('LOGIN');
   const [isRiderLoggedIn, setIsRiderLoggedIn] = useState(false);
@@ -222,7 +232,7 @@ export default function RideShell() {
                   <button 
                     onClick={() => setSelectedService('RIDES')}
                     className={cn(
-                      "flex flex-col items-center justify-center p-4 rounded-[2rem] transition-all duration-300 gap-2 border",
+                      "flex flex-col items-center justify-center p-4 rounded-[3.5rem] transition-all duration-300 gap-2 border",
                       selectedService === 'RIDES' 
                         ? "bg-white shadow-xl border-white scale-105" 
                         : "bg-white/40 border-white/20 hover:bg-white/60"
@@ -237,7 +247,7 @@ export default function RideShell() {
                   <button 
                     onClick={() => setSelectedService('ERRANDS')}
                     className={cn(
-                      "flex flex-col items-center justify-center p-4 rounded-[2rem] transition-all duration-300 gap-2 border",
+                      "flex flex-col items-center justify-center p-4 rounded-[3.5rem] transition-all duration-300 gap-2 border",
                       selectedService === 'ERRANDS' 
                         ? "bg-white shadow-xl border-white scale-105" 
                         : "bg-white/40 border-white/20 hover:bg-white/60"
@@ -250,7 +260,7 @@ export default function RideShell() {
                   </button>
                 </div>
 
-                <Card className="glass-morphism border-none shadow-2xl rounded-[2.5rem] overflow-hidden">
+                <Card className="glass-morphism border-none shadow-2xl rounded-[3.5rem] overflow-hidden">
                   <CardContent className="p-0">
                     <div className="p-8 space-y-6">
                       <div className="space-y-4">
@@ -300,7 +310,7 @@ export default function RideShell() {
                 <h2 className="text-2xl font-bold">Confirm Your Ride</h2>
               </div>
 
-              <Card className="glass-morphism rounded-3xl overflow-hidden shadow-2xl">
+              <Card className="glass-morphism rounded-[3.5rem] overflow-hidden shadow-2xl">
                 <CardContent className="p-8 space-y-8">
                   <MapCard pickup={pickup} destination={destination} />
                   
@@ -335,6 +345,300 @@ export default function RideShell() {
                   <Button className="w-full h-16 bg-primary hover:bg-primary/90 text-white font-bold text-xl rounded-2xl shadow-lg shadow-primary/20" onClick={findRider}>
                     Confirm & Request
                   </Button>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          {/* RIDER DASHBOARD */}
+          {state === 'RIDER_DASHBOARD' && (
+            <div className="space-y-8">
+              <div className="flex items-center justify-between">
+                <h2 className="text-3xl font-bold tracking-tight">Rider Console</h2>
+                <div className="flex gap-2">
+                  <Button variant="outline" className="rounded-full border-primary/20 text-primary font-bold" onClick={() => setIsRiderLoggedIn(false)}>Logout</Button>
+                  <Button variant="ghost" className="rounded-full" onClick={() => setState('LANDING')}>Exit</Button>
+                </div>
+              </div>
+
+              {/* Wallet Summary Card */}
+              <Card 
+                className="bg-gradient-to-br from-[#8E2DE2] via-[#4A00E0] to-[#FF0080] border-none text-white rounded-[3.5rem] shadow-2xl p-8 cursor-pointer transform transition-transform hover:scale-[1.02]"
+                onClick={() => setState('RIDER_WALLET')}
+              >
+                <div className="flex justify-between items-start mb-4">
+                  <div className="space-y-1">
+                    <p className="text-white/60 text-xs font-black uppercase tracking-widest">Current Balance</p>
+                    <h3 className="text-4xl font-black tracking-tight">KES {riderBalance.toLocaleString()}</h3>
+                  </div>
+                  <Badge className="bg-white/20 text-white border-none font-bold">+ {weeklyGrowth}%</Badge>
+                </div>
+                <div className="flex items-center gap-2 mt-4">
+                  <div className="bg-white/20 p-2 rounded-full">
+                    <PieChart className="w-4 h-4" />
+                  </div>
+                  <span className="text-xs font-bold text-white/80">View detailed performance insights</span>
+                  <ChevronRight className="w-4 h-4 ml-auto" />
+                </div>
+              </Card>
+
+              <div className="space-y-6">
+                <h3 className="text-xl font-bold tracking-tight px-2">Active Opportunities</h3>
+                <div className="space-y-4">
+                  {rideRequests.map((req) => (
+                    <Card key={req.id} className="glass-morphism border-none shadow-lg rounded-[3.5rem] overflow-hidden">
+                      <CardContent className="p-8">
+                        <div className="flex justify-between items-start mb-6">
+                          <div className="space-y-4 flex-1">
+                            <div className="flex items-start gap-4">
+                              <div className="mt-1.5 h-2 w-2 rounded-full bg-primary shrink-0" />
+                              <div>
+                                <p className="text-[10px] font-black uppercase tracking-widest text-foreground/30 mb-0.5">Pickup Location</p>
+                                <p className="font-bold text-lg">{req.pickup}</p>
+                              </div>
+                            </div>
+                            <div className="flex items-start gap-4">
+                              <Navigation className="w-4 h-4 text-primary shrink-0 mt-1" />
+                              <div>
+                                <p className="text-[10px] font-black uppercase tracking-widest text-foreground/30 mb-0.5">Final Destination</p>
+                                <p className="font-bold text-lg">{req.destination}</p>
+                              </div>
+                            </div>
+                          </div>
+                          <div className="text-right space-y-2">
+                            <Badge className="bg-primary/10 text-primary border-none font-black text-[9px] tracking-widest">{req.category}</Badge>
+                            <p className="text-3xl font-black text-primary">{req.price}</p>
+                            <p className="text-[10px] font-bold text-foreground/30">{req.distance}</p>
+                          </div>
+                        </div>
+
+                        <div className="bg-muted/30 rounded-[2.5rem] mb-6 overflow-hidden">
+                          <MapCard pickup={req.pickup} destination={req.destination} />
+                        </div>
+                        
+                        <div className="flex gap-3">
+                          <Button 
+                            variant="outline" 
+                            className="flex-1 h-14 rounded-full font-bold border-primary/20 text-primary" 
+                            onClick={() => openInGoogleMaps(req.pickup)}
+                          >
+                            <MapIcon className="w-4 h-4 mr-2" /> Navigate
+                          </Button>
+                          <Button className="flex-1 h-14 bg-primary text-white font-bold rounded-full shadow-lg" onClick={() => handleRequestAction(req.id)}>
+                            Accept Ride
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* RIDER WALLET VIEW - MATCHING THE INSPIRATION IMAGE */}
+          {state === 'RIDER_WALLET' && (
+            <div className="space-y-8 animate-in fade-in zoom-in-95 duration-500">
+              <div className="flex items-center justify-between">
+                <Button variant="ghost" size="icon" onClick={() => setState('RIDER_DASHBOARD')} className="rounded-full">
+                  <ArrowLeft className="w-6 h-6" />
+                </Button>
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-full bg-gradient-to-tr from-primary to-orange-400 p-0.5">
+                    <div className="h-full w-full rounded-full bg-white flex items-center justify-center overflow-hidden">
+                      <User className="w-6 h-6 text-primary" />
+                    </div>
+                  </div>
+                  <p className="font-bold">Hello, Samuel</p>
+                </div>
+                <Button variant="ghost" size="icon" className="rounded-full bg-white/20 backdrop-blur-md">
+                  <Settings className="w-5 h-5" />
+                </Button>
+              </div>
+
+              {/* Main Wallet Card */}
+              <div className="bg-gradient-to-br from-[#8E2DE2] via-[#4A00E0] to-[#FF0080] p-10 rounded-[4rem] text-white shadow-3xl relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -mr-32 -mt-32 blur-3xl" />
+                <div className="space-y-2 relative z-10">
+                  <p className="text-white/70 font-black uppercase tracking-[0.2em] text-[10px]">Wallet (KES)</p>
+                  <div className="flex items-baseline gap-2">
+                    <h2 className="text-6xl font-black tracking-tighter">${riderBalance.toLocaleString()}</h2>
+                    <Badge className="bg-green-400 text-green-900 border-none font-black text-xs px-2">+ {weeklyGrowth}%</Badge>
+                  </div>
+                </div>
+
+                {/* Quick Action Buttons - Frosted Glass Style */}
+                <div className="grid grid-cols-4 gap-4 mt-12">
+                  {[
+                    { icon: Plus, label: 'Add' },
+                    { icon: ArrowUpRight, label: 'Withdraw' },
+                    { icon: History, label: 'History' },
+                    { icon: BarChart3, label: 'Stats' }
+                  ].map((action, i) => (
+                    <div key={i} className="flex flex-col items-center gap-2">
+                      <button className="h-14 w-14 rounded-3xl bg-white/15 backdrop-blur-xl flex items-center justify-center border border-white/20 transition-all hover:bg-white/30 hover:scale-110 active:scale-95">
+                        <action.icon className="w-6 h-6 text-white" />
+                      </button>
+                      <span className="text-[10px] font-black uppercase tracking-widest text-white/60">{action.label}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Performance Section */}
+              <div className="space-y-6">
+                <div className="flex items-center justify-between px-2">
+                  <h3 className="text-xl font-black uppercase tracking-widest">Performance</h3>
+                  <button className="text-xs font-bold text-primary hover:underline" onClick={() => setState('RIDER_ANALYTICS')}>View All</button>
+                </div>
+                
+                <div className="space-y-4">
+                  {[
+                    { icon: Bike, label: 'Passenger Rides', amount: 5240.00, growth: '+5.24%', color: 'bg-orange-500' },
+                    { icon: Package, label: 'Errands Completed', amount: 2344.00, growth: '+1.34%', color: 'bg-indigo-500' },
+                    { icon: CreditCard, label: 'Platform Commission', amount: -758.00, growth: '-2.10%', color: 'bg-pink-500' }
+                  ].map((item, i) => (
+                    <Card key={i} className="bg-white/60 backdrop-blur-xl border-none rounded-[2.5rem] p-6 shadow-sm flex items-center justify-between group cursor-pointer hover:bg-white transition-colors">
+                      <div className="flex items-center gap-4">
+                        <div className={cn("h-14 w-14 rounded-2xl flex items-center justify-center text-white shadow-lg", item.color)}>
+                          <item.icon className="w-6 h-6" />
+                        </div>
+                        <div>
+                          <p className="font-bold text-sm">{item.label}</p>
+                          <p className="text-[10px] font-bold text-foreground/40 uppercase tracking-widest">{item.amount > 0 ? 'Monthly Gain' : 'Monthly Fee'}</p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-black text-lg">KES {Math.abs(item.amount).toLocaleString()}</p>
+                        <p className={cn("text-[10px] font-bold", item.growth.startsWith('+') ? 'text-green-500' : 'text-red-500')}>{item.growth}</p>
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+              </div>
+
+              {/* Bottom Nav Simulation */}
+              <div className="fixed bottom-8 left-1/2 -translate-x-1/2 w-full max-w-sm px-4">
+                <div className="bg-[#0B0E11] rounded-full h-20 flex items-center justify-between px-10 shadow-3xl border border-white/5 relative">
+                  <button className="text-white/40"><MapIcon className="w-6 h-6" /></button>
+                  <button className="text-white/40"><History className="w-6 h-6" /></button>
+                  <button className="h-14 w-14 bg-gradient-to-tr from-[#8E2DE2] to-[#FF0080] rounded-full flex items-center justify-center shadow-[0_0_20px_rgba(142,45,226,0.5)] transform -translate-y-2 border-4 border-[#0B0E11]">
+                    <ArrowLeftRight className="w-6 h-6 text-white" />
+                  </button>
+                  <button className="text-primary"><CreditCard className="w-6 h-6" /></button>
+                  <button className="text-white/40"><Settings className="w-6 h-6" /></button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* RIDER ANALYTICS - CHART VIEW INSPIRED BY IMAGE */}
+          {state === 'RIDER_ANALYTICS' && (
+            <div className="space-y-8 animate-in slide-in-from-right-12 duration-500 pb-32">
+              <div className="flex items-center justify-between">
+                <Button variant="ghost" size="icon" onClick={() => setState('RIDER_WALLET')} className="rounded-full">
+                  <ArrowLeft className="w-6 h-6" />
+                </Button>
+                <h3 className="text-xl font-black uppercase tracking-widest text-center">Earnings Chart</h3>
+                <Button variant="ghost" size="icon" className="rounded-full"><Settings className="w-5 h-5" /></Button>
+              </div>
+
+              <div className="text-center space-y-2">
+                <p className="text-xs font-black uppercase tracking-widest text-foreground/40">Current Weekly Total</p>
+                <div className="flex items-center justify-center gap-3">
+                  <h2 className="text-5xl font-black tracking-tight">$353.29</h2>
+                  <Badge className="bg-green-400 text-green-900 border-none font-bold">+4.34%</Badge>
+                </div>
+              </div>
+
+              {/* Simulated Chart Container */}
+              <div className="bg-[#0B0E11] rounded-[3.5rem] p-8 space-y-8 text-white shadow-2xl min-h-[400px] flex flex-col justify-between">
+                <div className="flex justify-between items-center text-[10px] font-black text-white/40 uppercase tracking-widest">
+                  <span>1H</span>
+                  <span>2H</span>
+                  <span>8H</span>
+                  <span className="text-primary bg-primary/10 px-2 py-1 rounded-lg">1D</span>
+                  <span>1W</span>
+                  <span>1M</span>
+                  <span>1Y</span>
+                </div>
+
+                {/* Abstract Bar Graph Simulation */}
+                <div className="flex items-end justify-between h-48 gap-1 px-2">
+                  {[40, 70, 45, 90, 65, 80, 50, 60, 85, 45, 75, 55].map((h, i) => (
+                    <div 
+                      key={i} 
+                      className={cn(
+                        "flex-1 rounded-full transition-all duration-700", 
+                        i === 3 ? "bg-primary shadow-[0_0_15px_rgba(249,115,22,0.5)] h-[90%]" : "bg-white/10"
+                      )} 
+                      style={{ height: `${h}%` }}
+                    />
+                  ))}
+                </div>
+
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center border-b border-white/5 pb-4">
+                    <span className="text-xs font-bold text-white/40">Opening Balance</span>
+                    <span className="font-mono font-bold">$342.56</span>
+                  </div>
+                  <div className="flex justify-between items-center border-b border-white/5 pb-4">
+                    <span className="text-xs font-bold text-white/40">Closing Balance</span>
+                    <span className="font-mono font-bold">$356.13</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs font-bold text-white/40">Weekly Range</span>
+                    <span className="font-mono font-bold">$145.35 - $360.25</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <Button className="h-16 rounded-[2.5rem] bg-white/10 hover:bg-white/20 text-white font-bold text-lg border-none shadow-xl">
+                  Transfer
+                </Button>
+                <Button className="h-16 rounded-[2.5rem] bg-gradient-to-r from-[#8E2DE2] to-[#FF0080] hover:opacity-90 text-white font-bold text-lg border-none shadow-2xl">
+                  Withdraw
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* RIDER AUTH */}
+          {state === 'RIDER_AUTH' && (
+            <div className="space-y-6">
+              <div className="flex items-center gap-4 mb-2">
+                <Button variant="ghost" size="icon" onClick={() => setState('LANDING')} className="rounded-full hover:bg-muted">
+                  <ArrowLeft className="w-5 h-5" />
+                </Button>
+                <h2 className="text-2xl font-bold">{authMode === 'LOGIN' ? 'Rider Login' : 'Join the Fleet'}</h2>
+              </div>
+
+              <Card className="glass-morphism rounded-[3.5rem] overflow-hidden border-none shadow-2xl">
+                <CardContent className="p-10 space-y-8">
+                  <div className="space-y-5">
+                    {authMode === 'SIGNUP' && (
+                      <Input placeholder="Full Name" className="h-14 bg-white/50 border-none rounded-2xl px-6" />
+                    )}
+                    <Input placeholder="Phone Number" className="h-14 bg-white/50 border-none rounded-2xl px-6" />
+                    <Input type="password" placeholder="Password" className="h-14 bg-white/50 border-none rounded-2xl px-6" />
+                  </div>
+
+                  <Button 
+                    className="w-full h-16 bg-primary hover:bg-primary/90 text-white font-bold text-xl rounded-2xl shadow-lg"
+                    onClick={() => { setIsRiderLoggedIn(true); setState('RIDER_DASHBOARD'); }}
+                  >
+                    {authMode === 'LOGIN' ? 'Login' : 'Apply Now'}
+                  </Button>
+
+                  <div className="text-center">
+                    <button 
+                      className="text-sm font-bold text-primary hover:underline"
+                      onClick={() => setAuthMode(authMode === 'LOGIN' ? 'SIGNUP' : 'LOGIN')}
+                    >
+                      {authMode === 'LOGIN' ? "New here? Join our fleet" : "Already registered? Login"}
+                    </button>
+                  </div>
                 </CardContent>
               </Card>
             </div>
@@ -379,7 +683,7 @@ export default function RideShell() {
 
               <MapCard pickup={pickup} destination={destination} isTracking={true} />
 
-              <Card className="glass-morphism border-none rounded-3xl overflow-hidden shadow-2xl">
+              <Card className="glass-morphism border-none rounded-[3.5rem] overflow-hidden shadow-2xl">
                 <CardContent className="p-8 space-y-6">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
@@ -414,71 +718,6 @@ export default function RideShell() {
             </div>
           )}
 
-          {/* RIDER DASHBOARD */}
-          {state === 'RIDER_DASHBOARD' && (
-            <div className="space-y-8">
-              <div className="flex items-center justify-between">
-                <h2 className="text-3xl font-bold tracking-tight">Rider Console</h2>
-                <div className="flex gap-2">
-                  <Button variant="outline" className="rounded-2xl border-primary/20 text-primary font-bold" onClick={() => setIsRiderLoggedIn(false)}>Logout</Button>
-                  <Button variant="ghost" className="rounded-2xl" onClick={() => setState('LANDING')}>Exit</Button>
-                </div>
-              </div>
-
-              <div className="space-y-6">
-                <h3 className="text-xl font-bold tracking-tight px-2">Active Opportunities</h3>
-                <div className="space-y-4">
-                  {rideRequests.map((req) => (
-                    <Card key={req.id} className="glass-morphism border-none shadow-lg rounded-[2rem] overflow-hidden">
-                      <CardContent className="p-8">
-                        <div className="flex justify-between items-start mb-6">
-                          <div className="space-y-4 flex-1">
-                            <div className="flex items-start gap-4">
-                              <div className="mt-1.5 h-2 w-2 rounded-full bg-primary shrink-0" />
-                              <div>
-                                <p className="text-[10px] font-black uppercase tracking-widest text-foreground/30 mb-0.5">Pickup Location</p>
-                                <p className="font-bold text-lg">{req.pickup}</p>
-                              </div>
-                            </div>
-                            <div className="flex items-start gap-4">
-                              <Navigation className="w-4 h-4 text-primary shrink-0 mt-1" />
-                              <div>
-                                <p className="text-[10px] font-black uppercase tracking-widest text-foreground/30 mb-0.5">Final Destination</p>
-                                <p className="font-bold text-lg">{req.destination}</p>
-                              </div>
-                            </div>
-                          </div>
-                          <div className="text-right space-y-2">
-                            <Badge className="bg-primary/10 text-primary border-none font-black text-[9px] tracking-widest">{req.category}</Badge>
-                            <p className="text-3xl font-black text-primary">{req.price}</p>
-                            <p className="text-[10px] font-bold text-foreground/30">{req.distance}</p>
-                          </div>
-                        </div>
-
-                        <div className="bg-muted/30 rounded-2xl mb-6 overflow-hidden">
-                          <MapCard pickup={req.pickup} destination={req.destination} />
-                        </div>
-                        
-                        <div className="flex gap-3">
-                          <Button 
-                            variant="outline" 
-                            className="flex-1 h-14 rounded-2xl font-bold border-primary/20 text-primary" 
-                            onClick={() => openInGoogleMaps(req.pickup)}
-                          >
-                            <MapIcon className="w-4 h-4 mr-2" /> Navigate
-                          </Button>
-                          <Button className="flex-1 h-14 bg-primary text-white font-bold rounded-2xl shadow-lg" onClick={() => handleRequestAction(req.id)}>
-                            Accept Ride
-                          </Button>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
-
           {/* POST RIDE FEEDBACK */}
           {state === 'POST_RIDE' && (
             <div className="text-center space-y-12">
@@ -509,46 +748,6 @@ export default function RideShell() {
                   Submit Review
                 </Button>
               </div>
-            </div>
-          )}
-
-          {/* RIDER AUTH */}
-          {state === 'RIDER_AUTH' && (
-            <div className="space-y-6">
-              <div className="flex items-center gap-4 mb-2">
-                <Button variant="ghost" size="icon" onClick={() => setState('LANDING')} className="rounded-full hover:bg-muted">
-                  <ArrowLeft className="w-5 h-5" />
-                </Button>
-                <h2 className="text-2xl font-bold">{authMode === 'LOGIN' ? 'Rider Login' : 'Join the Fleet'}</h2>
-              </div>
-
-              <Card className="glass-morphism rounded-[2.5rem] overflow-hidden border-none shadow-2xl">
-                <CardContent className="p-10 space-y-8">
-                  <div className="space-y-5">
-                    {authMode === 'SIGNUP' && (
-                      <Input placeholder="Full Name" className="h-14 bg-white/50 border-none rounded-2xl px-6" />
-                    )}
-                    <Input placeholder="Phone Number" className="h-14 bg-white/50 border-none rounded-2xl px-6" />
-                    <Input type="password" placeholder="Password" className="h-14 bg-white/50 border-none rounded-2xl px-6" />
-                  </div>
-
-                  <Button 
-                    className="w-full h-16 bg-primary hover:bg-primary/90 text-white font-bold text-xl rounded-2xl shadow-lg"
-                    onClick={() => { setIsRiderLoggedIn(true); setState('RIDER_DASHBOARD'); }}
-                  >
-                    {authMode === 'LOGIN' ? 'Login' : 'Apply Now'}
-                  </Button>
-
-                  <div className="text-center">
-                    <button 
-                      className="text-sm font-bold text-primary hover:underline"
-                      onClick={() => setAuthMode(authMode === 'LOGIN' ? 'SIGNUP' : 'LOGIN')}
-                    >
-                      {authMode === 'LOGIN' ? "New here? Join our fleet" : "Already registered? Login"}
-                    </button>
-                  </div>
-                </CardContent>
-              </Card>
             </div>
           )}
 
