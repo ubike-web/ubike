@@ -20,6 +20,13 @@ export function calculateErrandFare(distance: number, size: string): string {
   return `KES ${Math.round(total)}`;
 }
 
+/**
+ * Generates a Google Maps navigation URL for a given address or coordinates.
+ */
+export function getGoogleMapsUrl(query: string) {
+  return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(query)}&travelmode=two-wheeler`;
+}
+
 export const MOCK_RIDERS = [
   {
     id: 'R001',
