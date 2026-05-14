@@ -8,16 +8,43 @@ export const KM_RATE = 50;
 export const ELECTRIC_SURCHARGE = 1.2;
 export const ERRAND_BASE = 150;
 
-export function calculateFare(distance: number, type: RideType): string {
+// Adjustment Constants
+export const MIN_ADJUSTMENT_PCT = 0.20;
+export const MAX_ADJUSTMENT_PCT = 0.30;
+export const STANDARD_COMMISSION_PCT = 0.20;
+export const ADJUSTED_COMMISSION_PCT = 0.25;
+
+export const ADJUSTMENT_REASONS = [
+  "Bad road",
+  "Rainy weather",
+  "Heavy traffic",
+  "Long distance",
+  "Remote area",
+  "Night ride",
+  "Steep terrain",
+  "Waiting time",
+  "Other reason"
+];
+
+export function calculateFare(distance: number, type: RideType): number {
   const base = BASE_FARE + (distance * KM_RATE);
   const total = type === 'Electric' ? base * ELECTRIC_SURCHARGE : base;
-  return `KES ${Math.round(total)}`;
+  return Math.round(total);
+}
+
+export function formatFare(amount: number): string {
+  return `KES ${amount}`;
 }
 
 export function calculateErrandFare(distance: number, size: string): string {
   const sizeMultiplier = size === 'Large' ? 1.5 : size === 'Medium' ? 1.2 : 1;
   const total = (ERRAND_BASE + (distance * KM_RATE)) * sizeMultiplier;
   return `KES ${Math.round(total)}`;
+}
+
+export function calculateCommission(fare: number, isAdjusted: boolean): number {
+  const rate = isAdjusted ? ADJUSTED_COMMISSION_PCT : STANDARD_COMMISSION_PCT;
+  return Math.round(fare * rate);
 }
 
 /**
@@ -84,7 +111,7 @@ export const MOCK_REQUESTS = [
     pickup: 'Town Center, Nairobi',
     destination: 'Westlands Stage',
     distance: '2.3 km away',
-    price: 'KES 250',
+    price: 250,
     type: 'Electric' as const,
     category: 'Ride'
   },
@@ -93,7 +120,7 @@ export const MOCK_REQUESTS = [
     pickup: 'Kilimani Shopping Mall',
     destination: 'CBD - Uhuru Park',
     distance: '4.1 km away',
-    price: 'KES 400',
+    price: 400,
     type: 'Normal' as const,
     category: 'Errand',
     description: 'Documents delivery'

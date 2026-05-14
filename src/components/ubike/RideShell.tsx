@@ -9,12 +9,25 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { 
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose
+} from '@/components/ui/dialog';
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue
+} from '@/components/ui/select';
+import { Slider } from '@/components/ui/slider';
+import { 
   MapPin, Navigation, Zap, Bike, Star, ShieldAlert, MessageCircle, 
   ArrowLeft, Loader2, User, CloudRain, Sun, CloudDrizzle, 
   Package, ExternalLink, Map as MapIcon, Plus, ArrowUpRight, 
-  History, BarChart3, ChevronRight, CreditCard, ArrowLeftRight, Settings
+  History, BarChart3, ChevronRight, CreditCard, ArrowLeftRight, Settings,
+  AlertCircle
 } from 'lucide-react';
-import { calculateFare, calculateErrandFare, MOCK_RIDERS, MOCK_TRAFFIC, MOCK_REQUESTS, getGoogleMapsUrl, type RideType } from '@/lib/ride-service';
+import { 
+  calculateFare, calculateErrandFare, calculateCommission, formatFare,
+  MOCK_RIDERS, MOCK_TRAFFIC, MOCK_REQUESTS, getGoogleMapsUrl, 
+  ADJUSTMENT_REASONS, MIN_ADJUSTMENT_PCT, MAX_ADJUSTMENT_PCT,
+  type RideType 
+} from '@/lib/ride-service';
 import { smartRiderMatcher, type SmartRiderMatcherOutput } from '@/ai/flows/smart-rider-matcher-flow';
 import { analyzePostRideFeedback } from '@/ai/flows/post-ride-feedback-analyzer-flow';
 import { cn } from '@/lib/utils';
@@ -23,9 +36,6 @@ type FlowState = 'LANDING' | 'BOOKING_PANEL' | 'ERRANDS_PANEL' | 'MATCHING' | 'R
 type Weather = 'SUNNY' | 'RAINY' | 'DRIZZLE';
 type ServiceType = 'RIDES' | 'ERRANDS';
 
-/**
- * Premium Dark Map Component for Route Preview and Tracking
- */
 function MapCard({ pickup, destination, isTracking = false }: { pickup: string; destination: string; isTracking?: boolean }) {
   return (
     <div className="relative w-full h-48 md:h-64 bg-[#0F172A] rounded-[3.5rem] overflow-hidden shadow-inner group">
@@ -59,10 +69,6 @@ function MapCard({ pickup, destination, isTracking = false }: { pickup: string; 
         </div>
         <Badge variant="outline" className="mt-2 bg-white/90 border-none text-[8px] font-black uppercase tracking-tighter">{destination || 'Destination'}</Badge>
       </div>
-      <div className="absolute bottom-4 left-4 flex gap-2">
-        <Badge className="bg-white/10 text-white/40 border-none text-[7px] font-black tracking-[0.2em] uppercase">Premium Engine</Badge>
-        {isTracking && <Badge className="bg-green-500/20 text-green-400 border-none text-[7px] font-black tracking-[0.2em] uppercase animate-pulse">Live Tracking</Badge>}
-      </div>
     </div>
   );
 }
@@ -75,7 +81,6 @@ export default function RideShell() {
   const [destination, setDestination] = useState('');
   const [rideType, setRideType] = useState<RideType>('Normal');
   const [errandSize] = useState('Small');
-  const [itemDescription] = useState('');
   const [forSomeoneElse, setForSomeoneElse] = useState(false);
   const [passengerName, setPassengerName] = useState('');
   const [passengerPhone, setPassengerPhone] = useState('');
@@ -86,10 +91,18 @@ export default function RideShell() {
   const [isRiderLoggedIn, setIsRiderLoggedIn] = useState(false);
   const [authMode, setAuthMode] = useState<'LOGIN' | 'SIGNUP'>('LOGIN');
 
+  // Fare Negotiation State
+  const [isAdjusted, setIsAdjusted] = useState(false);
+  const [pendingAdjustment, setPendingAdjustment] = useState<{ amount: number, reason: string, pct: number } | null>(null);
+  const [showAdjustmentDialog, setShowAdjustmentDialog] = useState(false);
+  const [adjustmentReason, setAdjustmentReason] = useState(ADJUSTMENT_REASONS[0]);
+  const [adjustmentPct, setAdjustmentPct] = useState(25); // Default 25%
+
   const distanceValue = (pickup && destination) ? 5.2 : 0;
-  const estimatedFare = selectedService === 'ERRANDS' 
-    ? calculateErrandFare(distanceValue, errandSize)
-    : calculateFare(distanceValue, rideType);
+  const basePriceAmount = calculateFare(distanceValue, rideType);
+  const displayFare = isAdjusted && pendingAdjustment 
+    ? formatFare(pendingAdjustment.amount)
+    : formatFare(basePriceAmount);
 
   const startBooking = () => {
     if (pickup && destination) {
@@ -114,6 +127,26 @@ export default function RideShell() {
     }
   };
 
+  const proposeAdjustment = () => {
+    const extra = Math.round(basePriceAmount * (adjustmentPct / 100));
+    setPendingAdjustment({
+      amount: basePriceAmount + extra,
+      reason: adjustmentReason,
+      pct: adjustmentPct
+    });
+    setShowAdjustmentDialog(false);
+    // Notification logic would go here
+  };
+
+  const acceptAdjustment = () => {
+    setIsAdjusted(true);
+  };
+
+  const declineAdjustment = () => {
+    setPendingAdjustment(null);
+    setIsAdjusted(false);
+  };
+
   const completeRide = () => setState('POST_RIDE');
 
   const submitFeedback = async () => {
@@ -123,6 +156,8 @@ export default function RideShell() {
     setDestination('');
     setFeedback('');
     setRating(0);
+    setIsAdjusted(false);
+    setPendingAdjustment(null);
   };
 
   const handleRequestAction = (id: string) => {
@@ -135,10 +170,6 @@ export default function RideShell() {
 
   return (
     <div className="relative min-h-screen flex flex-col overflow-hidden bg-transparent">
-      <div className="fixed inset-0 pointer-events-none z-0">
-        <div className={cn("absolute inset-0 z-10", weather === 'SUNNY' ? "weather-sunny" : weather === 'RAINY' ? "weather-rain" : "weather-drizzle")} />
-      </div>
-
       <header className="relative z-50 w-full bg-white/40 backdrop-blur-xl border-b border-white/40">
         <nav className="flex items-center justify-between px-6 md:px-12 py-4 max-w-7xl mx-auto w-full">
           <Logo className="h-9 md:h-10 cursor-pointer hover:opacity-80 transition-opacity" onClick={() => setState('LANDING')} />
@@ -216,7 +247,7 @@ export default function RideShell() {
                       <div className="flex justify-between items-end px-2">
                         <div>
                           <p className="text-[9px] font-black text-foreground/40 uppercase tracking-[0.2em] mb-1">Estimated Fare</p>
-                          <p className="text-4xl font-black text-primary tracking-tighter">{estimatedFare}</p>
+                          <p className="text-4xl font-black text-primary tracking-tighter">{displayFare}</p>
                         </div>
                         <div className="text-right">
                           <p className="text-[9px] font-black text-foreground/40 uppercase tracking-[0.2em] mb-1">Distance</p>
@@ -257,7 +288,7 @@ export default function RideShell() {
                           <p className="text-[10px] text-foreground/40 uppercase tracking-[0.2em] font-black">{distanceValue} KM • 12 MIN</p>
                         </div>
                       </div>
-                      <p className="text-4xl font-black text-primary tracking-tighter">{estimatedFare}</p>
+                      <p className="text-4xl font-black text-primary tracking-tighter">{displayFare}</p>
                     </div>
 
                     <div className="pt-8 border-t border-white/20 space-y-6">
@@ -339,7 +370,7 @@ export default function RideShell() {
                           </div>
                           <div className="text-right space-y-3">
                             <Badge className="bg-primary/10 text-primary border-none font-black text-[9px] tracking-[0.2em] px-3">{req.category}</Badge>
-                            <p className="text-4xl font-black text-primary tracking-tighter">{req.price}</p>
+                            <p className="text-4xl font-black text-primary tracking-tighter">{formatFare(req.price)}</p>
                             <p className="text-[10px] font-bold text-foreground/30 uppercase tracking-widest">{req.distance}</p>
                           </div>
                         </div>
@@ -347,7 +378,7 @@ export default function RideShell() {
                           <Button variant="outline" className="flex-1 h-16 rounded-3xl font-black uppercase tracking-widest border-primary/20 text-primary" onClick={() => openInGoogleMaps(req.pickup)}>
                             <MapIcon className="w-5 h-5 mr-3" /> Map
                           </Button>
-                          <Button className="flex-1 h-16 bg-primary text-white font-black uppercase tracking-widest rounded-3xl shadow-xl" onClick={() => handleRequestAction(req.id)}>
+                          <Button className="flex-1 h-16 bg-primary text-white font-black uppercase tracking-widest rounded-3xl shadow-xl" onClick={() => { handleRequestAction(req.id); setState('MATCHING'); findRider(); }}>
                             Accept
                           </Button>
                         </div>
@@ -408,14 +439,14 @@ export default function RideShell() {
               <div className="space-y-8">
                 <div className="flex items-center justify-between px-2">
                   <h3 className="text-xl font-black uppercase tracking-[0.2em]">Performance</h3>
-                  <button className="text-[10px] font-black uppercase tracking-widest text-primary hover:underline" onClick={() => setState('RIDER_ANALYTICS')}>View All</button>
+                  <button className="text-[10px] font-black uppercase tracking-widest text-primary hover:underline">View All</button>
                 </div>
                 
                 <div className="grid gap-4">
                   {[
-                    { icon: Bike, label: 'Passenger Rides', amount: 5240, growth: '+5.2%', color: 'bg-orange-500' },
-                    { icon: Package, label: 'Errands Completed', amount: 2344, growth: '+1.3%', color: 'bg-indigo-500' },
-                    { icon: CreditCard, label: 'Commission Fee', amount: -758, growth: '-2.1%', color: 'bg-pink-500' }
+                    { icon: Bike, label: 'Standard Rides', amount: 5240, growth: '+20% Commission', color: 'bg-orange-500' },
+                    { icon: Zap, label: 'Adjusted Rides', amount: 2344, growth: '+25% Commission', color: 'bg-indigo-500' },
+                    { icon: CreditCard, label: 'Total Commissions', amount: -1258, growth: 'Automatic Deduction', color: 'bg-pink-500' }
                   ].map((item, i) => (
                     <Card key={i} className="bg-white/60 backdrop-blur-xl border-none rounded-[3rem] p-8 pill-shadow flex items-center justify-between group cursor-pointer hover:bg-white transition-all duration-300">
                       <div className="flex items-center gap-6">
@@ -424,27 +455,15 @@ export default function RideShell() {
                         </div>
                         <div>
                           <p className="font-black text-lg tracking-tight">{item.label}</p>
-                          <p className="text-[10px] font-black text-foreground/40 uppercase tracking-[0.2em]">{item.amount > 0 ? 'Monthly Gain' : 'Monthly Fee'}</p>
+                          <p className="text-[10px] font-black text-foreground/40 uppercase tracking-[0.2em]">{item.growth}</p>
                         </div>
                       </div>
                       <div className="text-right">
                         <p className="font-black text-2xl tracking-tighter">KES {Math.abs(item.amount).toLocaleString()}</p>
-                        <p className={cn("text-[10px] font-black uppercase tracking-widest", item.growth.startsWith('+') ? 'text-green-500' : 'text-red-500')}>{item.growth}</p>
+                        <p className={cn("text-[10px] font-black uppercase tracking-widest text-foreground/30")}>MONTHLY</p>
                       </div>
                     </Card>
                   ))}
-                </div>
-              </div>
-
-              <div className="fixed bottom-10 left-1/2 -translate-x-1/2 w-full max-w-sm px-6">
-                <div className="bg-[#0B0E11] rounded-[3.5rem] h-24 flex items-center justify-between px-12 pill-shadow border border-white/5 shadow-2xl">
-                  <button className="text-white/40 hover:text-white transition-colors"><MapIcon className="w-6 h-6" strokeWidth={1.5} /></button>
-                  <button className="text-white/40 hover:text-white transition-colors"><History className="w-6 h-6" strokeWidth={1.5} /></button>
-                  <button className="h-16 w-16 bg-gradient-to-tr from-[#8E2DE2] to-[#FF0080] rounded-3xl flex items-center justify-center shadow-[0_0_30px_rgba(142,45,226,0.5)] transform -translate-y-4 border-4 border-[#0B0E11] transition-transform hover:scale-110 active:scale-95">
-                    <ArrowLeftRight className="w-7 h-7 text-white" strokeWidth={2.5} />
-                  </button>
-                  <button className="text-primary"><CreditCard className="w-6 h-6" strokeWidth={2.5} /></button>
-                  <button className="text-white/40 hover:text-white transition-colors"><Settings className="w-6 h-6" strokeWidth={1.5} /></button>
                 </div>
               </div>
             </div>
@@ -501,6 +520,31 @@ export default function RideShell() {
 
           {state === 'RIDE_IN_PROGRESS' && matchedRider && (
             <div className="space-y-8">
+              {/* Fare Adjustment Notification for Client */}
+              {!isAdjusted && pendingAdjustment && !isRiderLoggedIn && (
+                <div className="bg-primary/10 border-2 border-primary/20 p-8 rounded-[3rem] animate-in slide-in-from-top-4 duration-500 space-y-6">
+                  <div className="flex items-center gap-4 text-primary">
+                    <AlertCircle className="w-8 h-8" />
+                    <h3 className="font-black text-xl uppercase tracking-tight">Price Adjusted</h3>
+                  </div>
+                  <div className="flex justify-between items-center px-2">
+                    <div className="space-y-1">
+                      <p className="text-[10px] font-black uppercase tracking-widest text-foreground/40 line-through">{formatFare(basePriceAmount)}</p>
+                      <p className="text-3xl font-black text-primary tracking-tighter">{formatFare(pendingAdjustment.amount)}</p>
+                    </div>
+                    <Badge className="bg-primary text-white font-black px-4 py-2 rounded-2xl">+{pendingAdjustment.pct}%</Badge>
+                  </div>
+                  <div className="bg-white/50 p-6 rounded-2xl">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-foreground/40 mb-2">Reason provided by rider</p>
+                    <p className="font-bold text-lg text-foreground/80">"{pendingAdjustment.reason}"</p>
+                  </div>
+                  <div className="flex gap-4">
+                    <Button variant="outline" className="flex-1 h-14 rounded-2xl font-black uppercase tracking-widest border-primary/20 text-primary" onClick={declineAdjustment}>Decline</Button>
+                    <Button className="flex-1 h-14 bg-primary text-white font-black uppercase tracking-widest rounded-2xl" onClick={acceptAdjustment}>Accept</Button>
+                  </div>
+                </div>
+              )}
+
               <div className="bg-white/80 backdrop-blur-xl border-none p-8 rounded-[3.5rem] pill-shadow flex justify-between items-center">
                 <div className="flex items-center gap-6">
                   <div className="icon-pill-container bg-primary p-4 text-white shadow-lg">
@@ -511,9 +555,10 @@ export default function RideShell() {
                     <p className="text-[10px] font-black uppercase tracking-[0.2em] text-foreground/40">Arriving in {matchedRider.estimatedPickupTime}</p>
                   </div>
                 </div>
-                <Button variant="ghost" size="icon" className="rounded-2xl h-14 w-14 bg-primary/5" onClick={() => openInGoogleMaps(pickup)}>
-                  <ExternalLink className="w-6 h-6 text-primary" strokeWidth={2.5} />
-                </Button>
+                <div className="text-right">
+                  {isAdjusted && <Badge className="bg-primary/10 text-primary border-none font-black text-[9px] mb-1">ADJUSTED</Badge>}
+                  <p className="text-3xl font-black text-primary tracking-tighter">{displayFare}</p>
+                </div>
               </div>
 
               <MapCard pickup={pickup} destination={destination} isTracking={true} />
@@ -541,12 +586,25 @@ export default function RideShell() {
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
-                    <Button variant="ghost" className="h-16 rounded-3xl text-foreground/40 font-black uppercase tracking-widest hover:text-destructive">
-                      <ShieldAlert className="w-5 h-5 mr-3" strokeWidth={2.5} /> SOS
-                    </Button>
-                    <Button className="h-16 bg-primary text-white font-black uppercase tracking-widest rounded-3xl shadow-xl" onClick={completeRide}>
-                      Arrived
-                    </Button>
+                    {isRiderLoggedIn ? (
+                      <>
+                        <Button variant="outline" className="h-16 rounded-3xl font-black uppercase tracking-widest border-primary/20 text-primary" onClick={() => setShowAdjustmentDialog(true)}>
+                          Adjust Fare
+                        </Button>
+                        <Button className="h-16 bg-primary text-white font-black uppercase tracking-widest rounded-3xl shadow-xl" onClick={completeRide}>
+                          Arrived
+                        </Button>
+                      </>
+                    ) : (
+                      <>
+                        <Button variant="ghost" className="h-16 rounded-3xl text-foreground/40 font-black uppercase tracking-widest hover:text-destructive">
+                          <ShieldAlert className="w-5 h-5 mr-3" strokeWidth={2.5} /> SOS
+                        </Button>
+                        <Button className="h-16 bg-primary text-white font-black uppercase tracking-widest rounded-3xl shadow-xl" onClick={completeRide}>
+                          End Ride
+                        </Button>
+                      </>
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -586,6 +644,74 @@ export default function RideShell() {
           )}
         </div>
       </main>
+
+      {/* Fare Adjustment Modal for Rider */}
+      <Dialog open={showAdjustmentDialog} onOpenChange={setShowAdjustmentDialog}>
+        <DialogContent className="glass-morphism rounded-[3.5rem] border-none p-10 max-w-md w-[90vw]">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-black uppercase tracking-tight text-center">Adjust Fare</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-10 py-6">
+            <div className="space-y-4">
+              <Label className="text-[10px] font-black uppercase tracking-widest text-foreground/40 ml-2">Reason for Adjustment</Label>
+              <Select value={adjustmentReason} onValueChange={setAdjustmentReason}>
+                <SelectTrigger className="h-16 bg-white/50 border-none rounded-2xl px-6 font-bold">
+                  <SelectValue placeholder="Select Reason" />
+                </SelectTrigger>
+                <SelectContent className="rounded-2xl border-none shadow-2xl">
+                  {ADJUSTMENT_REASONS.map(reason => (
+                    <SelectItem key={reason} value={reason} className="font-bold">{reason}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-8">
+              <div className="flex justify-between items-end px-2">
+                <Label className="text-[10px] font-black uppercase tracking-widest text-foreground/40">Percentage Increase</Label>
+                <p className="text-3xl font-black text-primary">+{adjustmentPct}%</p>
+              </div>
+              <div className="px-2">
+                <Slider 
+                  value={[adjustmentPct]} 
+                  onValueChange={(val) => setAdjustmentPct(val[0])}
+                  min={20}
+                  max={30}
+                  step={1}
+                  className="py-4"
+                />
+              </div>
+              <div className="flex justify-between text-[8px] font-black uppercase tracking-widest text-foreground/20 px-2">
+                <span>Min 20%</span>
+                <span>Max 30%</span>
+              </div>
+            </div>
+
+            <div className="bg-primary/5 p-6 rounded-2xl flex justify-between items-center">
+              <div>
+                <p className="text-[9px] font-black text-foreground/40 uppercase tracking-widest mb-1">New Estimated Fare</p>
+                <p className="text-3xl font-black text-primary tracking-tighter">
+                  {formatFare(basePriceAmount + Math.round(basePriceAmount * (adjustmentPct / 100)))}
+                </p>
+              </div>
+              <div className="text-right">
+                <p className="text-[9px] font-black text-foreground/40 uppercase tracking-widest mb-1">Commission (25%)</p>
+                <p className="font-bold text-foreground/60">
+                  {formatFare(calculateCommission(basePriceAmount + Math.round(basePriceAmount * (adjustmentPct / 100)), true))}
+                </p>
+              </div>
+            </div>
+          </div>
+          <DialogFooter className="gap-4">
+            <DialogClose asChild>
+              <Button variant="ghost" className="h-16 flex-1 rounded-2xl font-black uppercase tracking-widest text-foreground/40">Cancel</Button>
+            </DialogClose>
+            <Button className="h-16 flex-1 bg-primary text-white font-black uppercase tracking-widest rounded-2xl" onClick={proposeAdjustment}>
+              Send Proposal
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <footer className="relative z-50 p-12 flex flex-col items-center gap-4 opacity-30 pointer-events-none">
         <div className="text-[10px] font-black uppercase tracking-[0.6em] text-foreground text-center">u-bike premium mobility</div>
