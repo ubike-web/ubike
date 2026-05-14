@@ -1,4 +1,4 @@
-import { type SmartRiderMatcherInput } from '@/ai/flows/smart-rider-matcher-flow';
+import { type SmartRiderMatcherOutput } from '@/ai/flows/smart-rider-matcher-flow';
 
 export type RideType = 'Normal' | 'Electric';
 export type RiderServiceType = 'PassengerRides' | 'Errands' | 'Both';
@@ -8,9 +8,9 @@ export const KM_RATE = 50;
 export const ELECTRIC_SURCHARGE = 1.2;
 export const ERRAND_BASE = 150;
 
-// Adjustment Constants
-export const MIN_ADJUSTMENT_PCT = 0.20;
-export const MAX_ADJUSTMENT_PCT = 0.30;
+// Adjustment & Commission Constants
+export const MIN_ADJUSTMENT_PCT = 20;
+export const MAX_ADJUSTMENT_PCT = 30;
 export const STANDARD_COMMISSION_PCT = 0.20;
 export const ADJUSTED_COMMISSION_PCT = 0.25;
 
@@ -34,12 +34,6 @@ export function calculateFare(distance: number, type: RideType): number {
 
 export function formatFare(amount: number): string {
   return `KES ${amount}`;
-}
-
-export function calculateErrandFare(distance: number, size: string): string {
-  const sizeMultiplier = size === 'Large' ? 1.5 : size === 'Medium' ? 1.2 : 1;
-  const total = (ERRAND_BASE + (distance * KM_RATE)) * sizeMultiplier;
-  return `KES ${Math.round(total)}`;
 }
 
 export function calculateCommission(fare: number, isAdjusted: boolean): number {
@@ -90,18 +84,6 @@ export const MOCK_RIDERS = [
     historicalCompletionRate: 92,
     imageUrl: 'https://picsum.photos/seed/rider3/400/300',
     services: 'Errands' as RiderServiceType
-  },
-  {
-    id: 'R004',
-    name: 'Mercy Auma',
-    rating: 4.9,
-    bikeType: 'Electric' as const,
-    currentLocation: 'CBD, Nairobi',
-    estimatedTimeToUser: '5 minutes',
-    estimatedTravelTime: '20 minutes',
-    historicalCompletionRate: 99,
-    imageUrl: 'https://picsum.photos/seed/rider4/400/300',
-    services: 'Both' as RiderServiceType
   }
 ];
 
@@ -110,7 +92,7 @@ export const MOCK_REQUESTS = [
     id: 'REQ001',
     pickup: 'Town Center, Nairobi',
     destination: 'Westlands Stage',
-    distance: '2.3 km away',
+    distance: '2.3 km',
     price: 250,
     type: 'Electric' as const,
     category: 'Ride'
@@ -119,11 +101,10 @@ export const MOCK_REQUESTS = [
     id: 'REQ002',
     pickup: 'Kilimani Shopping Mall',
     destination: 'CBD - Uhuru Park',
-    distance: '4.1 km away',
+    distance: '4.1 km',
     price: 400,
     type: 'Normal' as const,
-    category: 'Errand',
-    description: 'Documents delivery'
+    category: 'Errand'
   }
 ];
 
