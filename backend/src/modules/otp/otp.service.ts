@@ -1,5 +1,5 @@
 import {
-  Injectable, BadRequestException, Logger, TooManyRequestsException,
+  Injectable, BadRequestException, Logger, HttpException, HttpStatus,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import axios from 'axios';
@@ -40,7 +40,7 @@ export class OtpService {
       const elapsed = (Date.now() - new Date(recent.created_at).getTime()) / 1000;
       if (elapsed < this.resendCooldown) {
         const wait = Math.ceil(this.resendCooldown - elapsed);
-        throw new TooManyRequestsException(`Please wait ${wait}s before requesting another OTP`);
+        throw new HttpException(`Please wait ${wait}s before requesting another OTP`, HttpStatus.TOO_MANY_REQUESTS);
       }
     }
 

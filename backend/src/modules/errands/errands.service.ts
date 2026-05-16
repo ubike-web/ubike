@@ -120,7 +120,8 @@ export class ErrandsService {
       .single();
 
     if (!errand) throw new NotFoundException('Errand not found');
-    if (errand.riders?.user_id !== riderUserId) throw new ForbiddenException('Not your errand');
+    const ridersRow = Array.isArray(errand.riders) ? errand.riders[0] : errand.riders;
+    if ((ridersRow as any)?.user_id !== riderUserId) throw new ForbiddenException('Not your errand');
 
     const validTransitions: Record<string, string[]> = {
       [ErrandStatus.ACCEPTED]: [ErrandStatus.PICKED_UP, ErrandStatus.CANCELLED],
@@ -167,7 +168,8 @@ export class ErrandsService {
       .single();
 
     if (!errand) throw new NotFoundException('Errand not found');
-    if (errand.riders?.user_id !== riderUserId) throw new ForbiddenException('Not your errand');
+    const riderEntry = Array.isArray(errand.riders) ? errand.riders[0] : errand.riders;
+    if ((riderEntry as any)?.user_id !== riderUserId) throw new ForbiddenException('Not your errand');
 
     const ext = file.originalname.split('.').pop();
     const path = `delivery-proofs/${errandId}/${Date.now()}.${ext}`;

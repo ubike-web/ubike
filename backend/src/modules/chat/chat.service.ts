@@ -102,12 +102,14 @@ export class ChatService {
     if (room.rides) {
       const ride = room.rides as any;
       participants.add(ride.customer_id);
-      if (ride.riders?.user_id) participants.add(ride.riders.user_id);
+      const rideRider = Array.isArray(ride.riders) ? ride.riders[0] : ride.riders;
+      if (rideRider?.user_id) participants.add(rideRider.user_id);
     }
     if (room.errands) {
       const errand = room.errands as any;
       participants.add(errand.customer_id);
-      if (errand.riders?.user_id) participants.add(errand.riders.user_id);
+      const errandRider = Array.isArray(errand.riders) ? errand.riders[0] : errand.riders;
+      if (errandRider?.user_id) participants.add(errandRider.user_id);
     }
 
     if (!participants.has(userId)) throw new ForbiddenException('Not a participant of this chat');

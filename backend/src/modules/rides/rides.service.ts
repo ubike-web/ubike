@@ -130,7 +130,8 @@ export class RidesService {
       .single();
 
     if (!ride) throw new NotFoundException('Ride not found');
-    if (ride.riders?.user_id !== riderId) throw new ForbiddenException('Not your ride');
+    const rideRiderRow = Array.isArray(ride.riders) ? ride.riders[0] : ride.riders;
+    if ((rideRiderRow as any)?.user_id !== riderId) throw new ForbiddenException('Not your ride');
 
     const validTransitions: Record<string, string[]> = {
       [RideStatus.ACCEPTED]: [RideStatus.RIDER_ARRIVING, RideStatus.CANCELLED],

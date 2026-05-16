@@ -24,7 +24,8 @@ export class CallsService {
         .single();
 
       if (!ride) throw new BadRequestException('Ride not found');
-      const participants = [ride.customer_id, (ride.riders as any)?.user_id];
+      const callRiders = Array.isArray(ride.riders) ? ride.riders[0] : ride.riders;
+      const participants = [ride.customer_id, (callRiders as any)?.user_id];
       if (!participants.includes(callerId) || !participants.includes(targetUserId)) {
         throw new ForbiddenException('Not a participant of this ride');
       }
