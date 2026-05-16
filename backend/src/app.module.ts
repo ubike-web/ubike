@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { ScheduleModule } from '@nestjs/schedule';
-import Joi from 'joi';
+import * as Joi from 'joi';
 
 import { HealthController } from './health.controller';
 import { DatabaseModule } from './database/database.module';
