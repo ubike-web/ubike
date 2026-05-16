@@ -2,12 +2,12 @@ import { Injectable, BadRequestException, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import axios from 'axios';
 
-interface Coordinates {
+export interface Coordinates {
   lat: number;
   lng: number;
 }
 
-interface RouteResult {
+export interface RouteResult {
   distanceKm: number;
   durationMinutes: number;
   geometry: any;

@@ -34,7 +34,7 @@ export class SupabaseService implements OnModuleInit {
   }
 
   // Storage bucket helper
-  storage(bucket: string) {
+  storage(bucket: string): any {
     return this._client.storage.from(bucket);
   }
 
