@@ -1,6 +1,7 @@
 import { Injectable, OnModuleInit, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import * as ws from 'ws';
 
 @Injectable()
 export class SupabaseService implements OnModuleInit {
@@ -19,6 +20,9 @@ export class SupabaseService implements OnModuleInit {
         persistSession: false,
       },
       db: { schema: 'public' },
+      realtime: {
+        transport: ws as any,
+      },
     });
 
     this.logger.log('Supabase client initialized');
@@ -28,22 +32,18 @@ export class SupabaseService implements OnModuleInit {
     return this._client;
   }
 
-  // Convenience — return typed query builder for a table
   from(table: string) {
     return this._client.from(table);
   }
 
-  // Storage bucket helper
   storage(bucket: string): any {
     return this._client.storage.from(bucket);
   }
 
-  // Auth admin helpers
   get auth() {
     return this._client.auth.admin;
   }
 
-  // Run raw SQL (useful for complex queries)
   async rpc(fn: string, params?: Record<string, any>) {
     return this._client.rpc(fn, params);
   }
