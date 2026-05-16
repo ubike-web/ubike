@@ -80,7 +80,7 @@ export class AdminService {
         ? 'Congratulations! Your u-bike rider account has been verified. You can now go online.'
         : `Your u-bike rider application was ${dto.status}. Reason: ${dto.reason || 'See support.'}`;
 
-    await this.notifications.sendPush((rider.users as any)?.user_id || rider.user_id, 'Account Update', message);
+    await this.notifications.saveNotification(rider.user_id, 'Account Update', message, 'rider_verification');
 
     return { message: `Rider ${dto.status}` };
   }
