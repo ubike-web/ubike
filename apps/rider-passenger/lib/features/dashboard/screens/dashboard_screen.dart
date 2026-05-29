@@ -108,7 +108,7 @@ class _HomeTab extends StatelessWidget {
         slivers: [
           SliverAppBar(
             pinned: true,
-            backgroundColor: kCharcoalDark,
+            backgroundColor: kWhite,
             expandedHeight: 180,
             flexibleSpace: FlexibleSpaceBar(
               background: Container(
@@ -118,9 +118,9 @@ class _HomeTab extends StatelessWidget {
                     const SizedBox(height: 8),
                     Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
                       Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                        Text('Hey, ${(user?.fullName ?? 'Rider').split(' ').first}!', style: const TextStyle(color: kCream, fontSize: 20, fontWeight: FontWeight.w700)),
+                        Text('Hey, ${(user?.fullName ?? 'Rider').split(' ').first}!', style: const TextStyle(color: kDark, fontSize: 20, fontWeight: FontWeight.w700)),
                         const SizedBox(height: 4),
-                        Text(online ? '🟢 Online — accepting rides' : '🔴 Offline', style: TextStyle(color: online ? kSuccess : kSubtext, fontSize: 13)),
+                        Text(online ? '🟢 Online — accepting rides' : '🔴 Offline', style: TextStyle(color: online ? kSuccess : kGrey, fontSize: 13)),
                       ]),
                       // Online toggle
                       GestureDetector(
@@ -130,7 +130,7 @@ class _HomeTab extends StatelessWidget {
                           width: 70,
                           height: 36,
                           decoration: BoxDecoration(
-                            color: online ? kSuccess : kBorder,
+                            color: online ? kSuccess : kLightGrey,
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: Stack(children: [
@@ -156,7 +156,7 @@ class _HomeTab extends StatelessWidget {
               delegate: SliverChildListDelegate([
                 // Earnings cards
                 Row(children: [
-                  Expanded(child: _EarningCard(label: 'Today', value: 'KES ${earnings?['totalEarnings']?.toStringAsFixed(0) ?? '0'}', icon: Icons.today, color: kGold)),
+                  Expanded(child: _EarningCard(label: 'Today', value: 'KES ${earnings?['totalEarnings']?.toStringAsFixed(0) ?? '0'}', icon: Icons.today, color: kOcean)),
                   const SizedBox(width: 12),
                   Expanded(child: _EarningCard(label: 'Pending', value: 'KES ${earnings?['pendingEarnings']?.toStringAsFixed(0) ?? '0'}', icon: Icons.pending_outlined, color: kWarning)),
                 ]).animate().fadeIn(duration: 400.ms),
@@ -180,7 +180,7 @@ class _HomeTab extends StatelessWidget {
                     const SizedBox(width: 12),
                     const Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                       Text('You\'re offline', style: TextStyle(color: kWarning, fontWeight: FontWeight.w700)),
-                      Text('Toggle online to start receiving ride requests', style: TextStyle(color: kSubtext, fontSize: 12)),
+                      Text('Toggle online to start receiving ride requests', style: TextStyle(color: kGrey, fontSize: 12)),
                     ])),
                     TextButton(onPressed: () => onToggle(true), child: const Text('Go Online')),
                   ]),
@@ -193,7 +193,7 @@ class _HomeTab extends StatelessWidget {
                     SizedBox(width: 12),
                     Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                       Text('Looking for rides...', style: TextStyle(color: kSuccess, fontWeight: FontWeight.w700)),
-                      Text('You\'ll be notified when a customer matches', style: TextStyle(color: kSubtext, fontSize: 12)),
+                      Text('You\'ll be notified when a customer matches', style: TextStyle(color: kGrey, fontSize: 12)),
                     ])),
                     SizedBox(width: 12, height: 12, child: CircularProgressIndicator(strokeWidth: 2, color: kSuccess)),
                   ]),
@@ -202,7 +202,7 @@ class _HomeTab extends StatelessWidget {
                 const SizedBox(height: 24),
 
                 // Quick actions
-                const Text('Quick Actions', style: TextStyle(color: kCream, fontWeight: FontWeight.w600, fontSize: 15)),
+                const Text('Quick Actions', style: TextStyle(color: kDark, fontWeight: FontWeight.w600, fontSize: 15)),
                 const SizedBox(height: 12),
                 GridView.count(
                   crossAxisCount: 3,
@@ -214,7 +214,7 @@ class _HomeTab extends StatelessWidget {
                   children: [
                     _QuickAction(icon: Icons.verified_user_outlined, label: 'KYC', color: kBlue, onTap: () => context.push('/kyc')),
                     _QuickAction(icon: Icons.support_agent, label: 'Support', color: kSienna, onTap: () {}),
-                    _QuickAction(icon: Icons.share, label: 'Refer', color: kGold, onTap: () {}),
+                    _QuickAction(icon: Icons.share, label: 'Refer', color: kOcean, onTap: () {}),
                   ],
                 ),
               ]),
@@ -240,7 +240,7 @@ class _EarningCard extends StatelessWidget {
       Icon(icon, color: color, size: 22),
       const SizedBox(height: 8),
       Text(value, style: TextStyle(color: color, fontWeight: FontWeight.w800, fontSize: 16)),
-      Text(label, style: const TextStyle(color: kSubtext, fontSize: 11)),
+      Text(label, style: const TextStyle(color: kGrey, fontSize: 11)),
     ]),
   );
 }
@@ -270,17 +270,17 @@ class _QuickAction extends StatelessWidget {
 class _RideHistoryTab extends StatelessWidget {
   const _RideHistoryTab();
   @override
-  Widget build(BuildContext context) => Scaffold(appBar: AppBar(title: const Text('My Trips')), body: const Center(child: Text('Trip history', style: TextStyle(color: kSubtext))));
+  Widget build(BuildContext context) => Scaffold(appBar: AppBar(title: const Text('My Trips')), body: const Center(child: Text('Trip history', style: TextStyle(color: kGrey))));
 }
 
 class _WalletTab extends StatelessWidget {
   const _WalletTab();
   @override
-  Widget build(BuildContext context) => Scaffold(appBar: AppBar(title: const Text('Wallet')), body: const Center(child: Text('Wallet & withdrawals', style: TextStyle(color: kSubtext))));
+  Widget build(BuildContext context) => Scaffold(appBar: AppBar(title: const Text('Wallet')), body: const Center(child: Text('Wallet & withdrawals', style: TextStyle(color: kGrey))));
 }
 
 class _PerformanceTab extends StatelessWidget {
   const _PerformanceTab();
   @override
-  Widget build(BuildContext context) => Scaffold(appBar: AppBar(title: const Text('Performance')), body: const Center(child: Text('Stats & ratings', style: TextStyle(color: kSubtext))));
+  Widget build(BuildContext context) => Scaffold(appBar: AppBar(title: const Text('Performance')), body: const Center(child: Text('Stats & ratings', style: TextStyle(color: kGrey))));
 }

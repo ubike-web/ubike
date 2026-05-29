@@ -28,10 +28,22 @@ export function Sidebar() {
   };
 
   return (
-    <aside className="w-64 min-h-screen bg-charcoal-600 border-r border-charcoal-300 flex flex-col">
-      <div className="px-6 py-5 border-b border-charcoal-300">
-        <span className="text-gold-500 font-bold text-xl">u-bike</span>
-        <span className="text-gray-400 text-xs ml-2 font-medium">Admin</span>
+    <aside className="w-64 min-h-screen bg-white border-r border-[#DDE8F0] flex flex-col shadow-sm">
+      {/* Logo */}
+      <div className="px-5 py-5 border-b border-[#DDE8F0]">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 ocean-gradient rounded-xl flex items-center justify-center">
+            <svg viewBox="0 0 32 32" className="w-5 h-5">
+              <path d="M8 22L12 10L20 10L24 22" stroke="white" strokeWidth="2" strokeLinecap="round" fill="none"/>
+              <circle cx="6" cy="24" r="4" stroke="white" strokeWidth="1.5" fill="none"/>
+              <circle cx="26" cy="24" r="4" stroke="white" strokeWidth="1.5" fill="none"/>
+            </svg>
+          </div>
+          <div>
+            <span className="text-[#0A2D6E] font-black text-lg leading-none">U-BIKE</span>
+            <p className="text-[#6B7A8D] text-[10px] font-medium">Admin Portal</p>
+          </div>
+        </div>
       </div>
 
       <nav className="flex-1 py-4 px-3">
@@ -40,24 +52,24 @@ export function Sidebar() {
             key={href}
             href={href}
             className={clsx(
-              'flex items-center gap-3 px-3 py-2.5 rounded-lg mb-1 text-sm font-medium transition-colors',
+              'flex items-center gap-3 px-3 py-2.5 rounded-xl mb-1 text-sm font-medium transition-all',
               pathname === href || pathname.startsWith(href + '/')
-                ? 'bg-gold-500/20 text-gold-400 border border-gold-500/30'
-                : 'text-gray-400 hover:bg-charcoal-400 hover:text-white',
+                ? 'bg-[#E3F4FD] text-[#0E86CA] border border-[#0E86CA]/20 shadow-sm'
+                : 'text-[#6B7A8D] hover:bg-[#F5FAFF] hover:text-[#0E86CA]',
             )}
           >
-            <Icon size={18} />
+            <Icon size={17} />
             {label}
           </Link>
         ))}
       </nav>
 
-      <div className="px-3 py-4 border-t border-charcoal-300">
+      <div className="px-3 py-4 border-t border-[#DDE8F0]">
         <button
           onClick={handleLogout}
-          className="flex items-center gap-3 px-3 py-2.5 rounded-lg w-full text-sm text-gray-400 hover:bg-sienna-500/20 hover:text-sienna-300 transition-colors"
+          className="flex items-center gap-3 px-3 py-2.5 rounded-xl w-full text-sm text-[#6B7A8D] hover:bg-red-50 hover:text-red-600 transition-colors"
         >
-          <LogOut size={18} />
+          <LogOut size={17} />
           Sign out
         </button>
       </div>

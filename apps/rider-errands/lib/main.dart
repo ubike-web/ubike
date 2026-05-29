@@ -7,7 +7,7 @@ import 'core/router.dart';
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
   SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
-  SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(statusBarColor: Colors.transparent, statusBarIconBrightness: Brightness.light));
+  SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(statusBarColor: Colors.transparent, statusBarIconBrightness: Brightness.dark));
   runApp(const ProviderScope(child: UbikeErrandsApp()));
 }
 
@@ -20,7 +20,7 @@ class UbikeErrandsApp extends ConsumerWidget {
     return MaterialApp.router(
       title: 'u-bike Errands',
       theme: errandsTheme,
-      themeMode: ThemeMode.dark,
+      themeMode: ThemeMode.light,
       routerConfig: router,
       debugShowCheckedModeBanner: false,
     );

@@ -9,7 +9,9 @@ void main() {
   SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
   SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
     statusBarColor: Colors.transparent,
-    statusBarIconBrightness: Brightness.light,
+    statusBarIconBrightness: Brightness.dark,
+    systemNavigationBarColor: Colors.white,
+    systemNavigationBarIconBrightness: Brightness.dark,
   ));
   runApp(const ProviderScope(child: UbikeApp()));
 }
@@ -22,9 +24,8 @@ class UbikeApp extends ConsumerWidget {
     final router = ref.watch(routerProvider);
     return MaterialApp.router(
       title: 'u-bike',
-      theme: ubikeLight,
-      darkTheme: ubikeDark,
-      themeMode: ThemeMode.dark,
+      theme: ubikeTheme,
+      themeMode: ThemeMode.light,
       routerConfig: router,
       debugShowCheckedModeBanner: false,
     );

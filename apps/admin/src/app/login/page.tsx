@@ -27,53 +27,78 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-charcoal-500 px-4">
-      <div className="w-full max-w-sm">
-        <div className="flex justify-center mb-8">
-          <svg viewBox="0 0 500 200" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-16 w-auto">
-            <path d="M170 85C150 85 130 75 120 75M330 85C350 85 370 75 380 75" stroke="#BF9340" strokeWidth="6" strokeLinecap="round"/>
-            <rect x="110" y="70" width="15" height="8" rx="2" fill="#BF9340"/>
-            <rect x="375" y="70" width="15" height="8" rx="2" fill="#BF9340"/>
-            <path d="M225 70C225 55 235 45 250 45C265 45 275 55 275 70L270 85C270 85 250 90 230 85L225 70Z" fill="#BF9340"/>
-            <circle cx="250" cy="78" r="10" fill="white"/>
-            <circle cx="250" cy="78" r="6" fill="#BF9340"/>
-            <rect x="235" y="85" width="6" height="40" rx="1" fill="#BF9340"/>
-            <rect x="259" y="85" width="6" height="40" rx="1" fill="#BF9340"/>
-            <rect x="242" y="115" width="16" height="65" rx="4" fill="#BF9340"/>
-            <text x="50" y="165" fontSize="80" fill="#BF9340" fontFamily="Poppins, sans-serif" fontWeight="bold">u-bike</text>
-          </svg>
+    <div className="min-h-screen flex">
+      {/* Left — Ocean gradient */}
+      <div className="hidden lg:flex w-1/2 ocean-gradient flex-col items-center justify-center p-12">
+        {/* Logo */}
+        <div className="text-center">
+          <div className="w-24 h-24 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-6 border-2 border-white/40">
+            <svg viewBox="0 0 64 64" className="w-14 h-14">
+              <path d="M20 36L28 18L36 18L44 36" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+              <circle cx="16" cy="42" r="8" stroke="white" strokeWidth="2.5" fill="none"/>
+              <circle cx="48" cy="42" r="8" stroke="white" strokeWidth="2.5" fill="none"/>
+              <path d="M28 18 L38 28 L44 36" stroke="white" strokeWidth="2" strokeLinecap="round" fill="none"/>
+              <path d="M40 26 L48 24" stroke="white" strokeWidth="2.5" strokeLinecap="round"/>
+              {/* Leaf */}
+              <path d="M50 16 C56 10 60 12 58 18 C54 20 50 20 50 16Z" fill="#4CAF50"/>
+            </svg>
+          </div>
+          <h1 className="text-4xl font-black text-white tracking-widest mb-3">U-BIKE</h1>
+          <p className="text-white/80 text-lg">Admin Portal</p>
+          <div className="mt-8 space-y-3 text-left">
+            {['Manage riders & customers', 'Monitor live rides & errands', 'KYC verification & approvals', 'Revenue & payout reports'].map(f => (
+              <div key={f} className="flex items-center gap-3">
+                <div className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0">
+                  <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"/></svg>
+                </div>
+                <span className="text-white/85 text-sm">{f}</span>
+              </div>
+            ))}
+          </div>
         </div>
+      </div>
 
-        <div className="bg-charcoal-400 rounded-2xl p-8 border border-charcoal-300">
-          <h1 className="text-xl font-semibold text-gold-500 mb-6 text-center">Admin Portal</h1>
+      {/* Right — white login form */}
+      <div className="flex-1 flex items-center justify-center bg-white p-8">
+        <div className="w-full max-w-sm">
+          {/* Mobile logo */}
+          <div className="lg:hidden text-center mb-8">
+            <div className="w-16 h-16 ocean-gradient rounded-2xl flex items-center justify-center mx-auto mb-3">
+              <span className="text-white font-black text-xl">U</span>
+            </div>
+            <h1 className="text-2xl font-black text-[#0A2D6E]">U-BIKE Admin</h1>
+          </div>
+
+          <h2 className="text-2xl font-bold text-[#0A1A3E] mb-2">Welcome back</h2>
+          <p className="text-[#6B7A8D] text-sm mb-8">Sign in to your admin account</p>
 
           {error && (
-            <div className="bg-sienna-500/20 border border-sienna-500 text-sienna-200 text-sm rounded-lg px-4 py-3 mb-4">
+            <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl px-4 py-3 mb-4">
               {error}
             </div>
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-sm text-gray-400 mb-1">Email</label>
+              <label className="block text-sm font-medium text-[#0A1A3E] mb-1.5">Email</label>
               <input
                 type="email"
                 value={email}
                 onChange={e => setEmail(e.target.value)}
                 required
-                className="w-full bg-charcoal-600 border border-charcoal-300 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-gold-500 transition-colors"
+                className="w-full bg-[#F5FAFF] border border-[#DDE8F0] rounded-xl px-4 py-3 text-[#0A1A3E] focus:outline-none focus:border-[#0E86CA] focus:ring-2 focus:ring-[#0E86CA]/20 transition-all text-sm"
                 placeholder="admin@ubike.com"
               />
             </div>
 
             <div>
-              <label className="block text-sm text-gray-400 mb-1">Password</label>
+              <label className="block text-sm font-medium text-[#0A1A3E] mb-1.5">Password</label>
               <input
                 type="password"
                 value={password}
                 onChange={e => setPassword(e.target.value)}
                 required
-                className="w-full bg-charcoal-600 border border-charcoal-300 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-gold-500 transition-colors"
+                className="w-full bg-[#F5FAFF] border border-[#DDE8F0] rounded-xl px-4 py-3 text-[#0A1A3E] focus:outline-none focus:border-[#0E86CA] focus:ring-2 focus:ring-[#0E86CA]/20 transition-all text-sm"
                 placeholder="••••••••"
               />
             </div>
@@ -81,11 +106,15 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-gold-500 hover:bg-gold-400 disabled:opacity-50 text-charcoal-500 font-semibold rounded-lg py-2.5 transition-colors mt-2"
+              className="w-full ocean-gradient disabled:opacity-60 text-white font-semibold rounded-xl py-3 transition-all hover:shadow-lg hover:shadow-[#0E86CA]/30 mt-2 text-sm"
             >
               {loading ? 'Signing in...' : 'Sign in'}
             </button>
           </form>
+
+          <p className="text-center text-[#6B7A8D] text-xs mt-6">
+            u-bike Admin Portal v1.0
+          </p>
         </div>
       </div>
     </div>
