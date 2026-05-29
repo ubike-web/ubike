@@ -1,652 +1,461 @@
 -- ============================================================
 -- u-bike Platform — Supabase PostgreSQL Schema
--- Run this in your Supabase SQL Editor (Dashboard → SQL Editor)
+-- Run this in the Supabase SQL Editor (Dashboard → SQL)
 -- ============================================================
 
--- Enable required extensions
+-- Enable extensions
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-CREATE EXTENSION IF NOT EXISTS "postgis";  -- For geo queries
+CREATE EXTENSION IF NOT EXISTS postgis;
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
 
 -- ─────────────────────────────────────────
 -- ENUMS
 -- ─────────────────────────────────────────
-CREATE TYPE user_role AS ENUM (
-  'customer', 'transport_rider', 'errands_rider',
-  'admin', 'super_admin', 'support'
-);
-
-CREATE TYPE rider_service_type AS ENUM ('transport', 'errands');
-CREATE TYPE vehicle_type AS ENUM ('normal_bike', 'electric_bike');
-CREATE TYPE verification_status AS ENUM ('pending', 'verified', 'rejected', 'suspended');
-
-CREATE TYPE ride_status AS ENUM (
-  'pending', 'searching', 'accepted', 'rider_arriving',
-  'in_progress', 'completed', 'cancelled', 'expired'
-);
-
-CREATE TYPE errand_status AS ENUM (
-  'pending', 'searching', 'accepted', 'picked_up',
-  'in_transit', 'delivered', 'cancelled', 'expired'
-);
-
-CREATE TYPE transaction_type AS ENUM (
-  'ride_payment', 'errand_payment', 'wallet_funding',
-  'rider_payout', 'refund', 'commission', 'withdrawal', 'earning'
-);
-
-CREATE TYPE transaction_status AS ENUM ('pending', 'success', 'failed', 'refunded');
+CREATE TYPE user_role AS ENUM ('customer','passenger_rider','errands_rider','admin','super_admin','support');
+CREATE TYPE ride_status AS ENUM ('requested','accepted','rider_arrived','in_progress','completed','cancelled','fare_negotiation');
+CREATE TYPE errand_status AS ENUM ('requested','accepted','picked_up','in_transit','delivered','cancelled');
+CREATE TYPE payment_status AS ENUM ('pending','escrowed','released','refunded','failed');
+CREATE TYPE vehicle_type AS ENUM ('standard','electric');
+CREATE TYPE rider_type AS ENUM ('passenger','errands');
+CREATE TYPE kyc_status AS ENUM ('pending','approved','rejected');
+CREATE TYPE transaction_type AS ENUM ('ride_payment','errand_payment','wallet_topup','wallet_withdrawal','rider_payout','refund','referral_bonus','promo_credit');
+CREATE TYPE transaction_status AS ENUM ('pending','success','failed','reversed');
+CREATE TYPE errand_category AS ENUM ('shopping','food_delivery','document_delivery','parcel_delivery','pharmacy','bill_payment','laundry','other');
+CREATE TYPE escrow_status AS ENUM ('held','released','refunded');
 
 -- ─────────────────────────────────────────
--- USERS (base table for all user types)
+-- USERS
 -- ─────────────────────────────────────────
 CREATE TABLE users (
-  id                  UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  full_name           TEXT NOT NULL,
-  phone               TEXT UNIQUE NOT NULL,
-  email               TEXT UNIQUE,
-  password_hash       TEXT NOT NULL,
-  role                user_role NOT NULL DEFAULT 'customer',
-  avatar_url          TEXT,
-  fcm_token           TEXT,
-  refresh_token_hash  TEXT,
-  is_phone_verified   BOOLEAN NOT NULL DEFAULT FALSE,
-  is_active           BOOLEAN NOT NULL DEFAULT TRUE,
-  created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  email           TEXT UNIQUE,
+  phone           TEXT UNIQUE,
+  password_hash   TEXT,
+  full_name       TEXT NOT NULL DEFAULT '',
+  avatar_url      TEXT,
+  role            user_role NOT NULL DEFAULT 'customer',
+  is_active       BOOLEAN NOT NULL DEFAULT TRUE,
+  is_verified     BOOLEAN NOT NULL DEFAULT FALSE,
+  referral_code   TEXT UNIQUE NOT NULL DEFAULT CONCAT('UBK', UPPER(SUBSTRING(gen_random_uuid()::text, 1, 8))),
+  referred_by     UUID REFERENCES users(id),
+  wallet_balance  NUMERIC(12,2) NOT NULL DEFAULT 0,
+  loyalty_points  INTEGER NOT NULL DEFAULT 0,
+  last_seen_at    TIMESTAMPTZ,
+  push_token      TEXT,
+  device_info     JSONB,
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CONSTRAINT chk_contact CHECK (email IS NOT NULL OR phone IS NOT NULL)
 );
 
 CREATE INDEX idx_users_phone ON users(phone);
+CREATE INDEX idx_users_email ON users(email);
 CREATE INDEX idx_users_role ON users(role);
-CREATE INDEX idx_users_is_active ON users(is_active);
+CREATE INDEX idx_users_referral_code ON users(referral_code);
 
 -- ─────────────────────────────────────────
--- CUSTOMERS (extension of users)
+-- RIDER PROFILES
 -- ─────────────────────────────────────────
-CREATE TABLE customers (
+CREATE TABLE rider_profiles (
+  id                     UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id                UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  rider_type             rider_type NOT NULL,
+  vehicle_type           vehicle_type NOT NULL DEFAULT 'standard',
+  plate_number           TEXT,
+  is_available           BOOLEAN NOT NULL DEFAULT FALSE,
+  is_kyc_verified        BOOLEAN NOT NULL DEFAULT FALSE,
+  current_lat            DOUBLE PRECISION,
+  current_lng            DOUBLE PRECISION,
+  current_location       GEOGRAPHY(POINT, 4326),
+  rating                 NUMERIC(3,2) NOT NULL DEFAULT 0,
+  total_rides            INTEGER NOT NULL DEFAULT 0,
+  earnings_total         NUMERIC(12,2) NOT NULL DEFAULT 0,
+  earnings_pending       NUMERIC(12,2) NOT NULL DEFAULT 0,
+  last_location_update   TIMESTAMPTZ,
+  created_at             TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE(user_id)
+);
+
+CREATE INDEX idx_rider_profiles_user_id ON rider_profiles(user_id);
+CREATE INDEX idx_rider_profiles_available ON rider_profiles(is_available, rider_type);
+CREATE INDEX idx_rider_profiles_location ON rider_profiles USING GIST(current_location);
+
+-- ─────────────────────────────────────────
+-- CUSTOMER PROFILES
+-- ─────────────────────────────────────────
+CREATE TABLE customer_profiles (
+  id                 UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id            UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  home_address       TEXT,
+  work_address       TEXT,
+  home_lat           DOUBLE PRECISION,
+  home_lng           DOUBLE PRECISION,
+  work_lat           DOUBLE PRECISION,
+  work_lng           DOUBLE PRECISION,
+  emergency_contact  TEXT,
+  preferred_payment  TEXT DEFAULT 'paystack',
+  created_at         TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE(user_id)
+);
+
+-- ─────────────────────────────────────────
+-- OTPs
+-- ─────────────────────────────────────────
+CREATE TABLE otps (
   id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  user_id     UUID NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
-  referral_code TEXT UNIQUE DEFAULT UPPER(SUBSTR(MD5(RANDOM()::TEXT), 1, 8)),
-  referred_by UUID REFERENCES customers(id),
+  phone       TEXT NOT NULL,
+  otp_hash    TEXT NOT NULL,
+  expires_at  TIMESTAMPTZ NOT NULL,
+  used        BOOLEAN NOT NULL DEFAULT FALSE,
+  attempts    INTEGER NOT NULL DEFAULT 0,
   created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_customers_user_id ON customers(user_id);
+CREATE INDEX idx_otps_phone ON otps(phone);
+CREATE INDEX idx_otps_expires ON otps(expires_at);
 
 -- ─────────────────────────────────────────
--- RIDERS
+-- REFRESH TOKENS
 -- ─────────────────────────────────────────
-CREATE TABLE riders (
-  id                  UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  user_id             UUID NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
-  service_type        rider_service_type NOT NULL,
-  verification_status verification_status NOT NULL DEFAULT 'pending',
-  rejection_reason    TEXT,
-  is_online           BOOLEAN NOT NULL DEFAULT FALSE,
-  current_lat         DOUBLE PRECISION,
-  current_lng         DOUBLE PRECISION,
-  last_location_update TIMESTAMPTZ,
-  last_seen           TIMESTAMPTZ,
-  rating              NUMERIC(3,2) NOT NULL DEFAULT 5.00,
-  total_trips         INTEGER NOT NULL DEFAULT 0,
-  acceptance_rate     NUMERIC(5,2) NOT NULL DEFAULT 100.00,
-  cancellation_rate   NUMERIC(5,2) NOT NULL DEFAULT 0.00,
-  created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
+CREATE TABLE refresh_tokens (
+  id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id     UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  token       TEXT NOT NULL UNIQUE,
+  revoked     BOOLEAN NOT NULL DEFAULT FALSE,
+  expires_at  TIMESTAMPTZ NOT NULL,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_riders_user_id ON riders(user_id);
-CREATE INDEX idx_riders_service_type ON riders(service_type);
-CREATE INDEX idx_riders_verification_status ON riders(verification_status);
-CREATE INDEX idx_riders_is_online ON riders(is_online);
--- Geo index for nearest-rider queries
-CREATE INDEX idx_riders_location ON riders USING GIST (
-  ST_SetSRID(ST_MakePoint(current_lng, current_lat), 4326)
-) WHERE current_lat IS NOT NULL AND current_lng IS NOT NULL;
+CREATE INDEX idx_refresh_tokens_user ON refresh_tokens(user_id);
+CREATE INDEX idx_refresh_tokens_token ON refresh_tokens(token);
 
 -- ─────────────────────────────────────────
--- VEHICLES
+-- KYC DOCUMENTS
 -- ─────────────────────────────────────────
-CREATE TABLE vehicles (
-  id            UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  rider_id      UUID NOT NULL REFERENCES riders(id) ON DELETE CASCADE,
-  vehicle_type  vehicle_type NOT NULL,
-  plate_number  TEXT NOT NULL,
-  model         TEXT NOT NULL,
-  color         TEXT NOT NULL,
-  year          INTEGER,
-  is_verified   BOOLEAN NOT NULL DEFAULT FALSE,
-  created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-
-CREATE INDEX idx_vehicles_rider_id ON vehicles(rider_id);
-
--- ─────────────────────────────────────────
--- RIDER DOCUMENTS
--- ─────────────────────────────────────────
-CREATE TABLE rider_documents (
-  id         UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  rider_id   UUID NOT NULL REFERENCES riders(id) ON DELETE CASCADE,
-  doc_type   TEXT NOT NULL, -- 'national_id', 'driver_license', 'vehicle_photo', 'insurance'
-  doc_url    TEXT NOT NULL,
-  status     verification_status NOT NULL DEFAULT 'pending',
-  reviewed_at TIMESTAMPTZ,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  UNIQUE(rider_id, doc_type)
+CREATE TABLE kyc_documents (
+  id                UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id           UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  plate_number      TEXT,
+  license_url       TEXT NOT NULL,
+  national_id_url   TEXT NOT NULL,
+  vehicle_photo_url TEXT NOT NULL,
+  insurance_url     TEXT,
+  status            kyc_status NOT NULL DEFAULT 'pending',
+  rejection_reason  TEXT,
+  reviewed_by       UUID REFERENCES users(id),
+  reviewed_at       TIMESTAMPTZ,
+  submitted_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE(user_id)
 );
 
 -- ─────────────────────────────────────────
--- SAVED LOCATIONS
--- ─────────────────────────────────────────
-CREATE TABLE saved_locations (
-  id         UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  user_id    UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  label      TEXT NOT NULL, -- 'Home', 'Work', 'School'
-  address    TEXT NOT NULL,
-  latitude   DOUBLE PRECISION NOT NULL,
-  longitude  DOUBLE PRECISION NOT NULL,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-
-CREATE INDEX idx_saved_locations_user_id ON saved_locations(user_id);
-
--- ─────────────────────────────────────────
--- RIDES (transport)
+-- RIDES
 -- ─────────────────────────────────────────
 CREATE TABLE rides (
+  id                      UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  customer_id             UUID NOT NULL REFERENCES users(id),
+  rider_id                UUID REFERENCES users(id),
+  pickup_address          TEXT NOT NULL,
+  pickup_lat              DOUBLE PRECISION NOT NULL,
+  pickup_lng              DOUBLE PRECISION NOT NULL,
+  pickup_location         GEOGRAPHY(POINT, 4326),
+  dropoff_address         TEXT NOT NULL,
+  dropoff_lat             DOUBLE PRECISION NOT NULL,
+  dropoff_lng             DOUBLE PRECISION NOT NULL,
+  dropoff_location        GEOGRAPHY(POINT, 4326),
+  distance_km             NUMERIC(8,2) NOT NULL DEFAULT 0,
+  duration_minutes        INTEGER,
+  status                  ride_status NOT NULL DEFAULT 'requested',
+  fare_estimate           NUMERIC(10,2) NOT NULL,
+  fare_final              NUMERIC(10,2),
+  fare_customer_approved  BOOLEAN,
+  payment_status          payment_status NOT NULL DEFAULT 'pending',
+  payment_reference       TEXT,
+  vehicle_type            vehicle_type NOT NULL DEFAULT 'standard',
+  surge_multiplier        NUMERIC(4,2) NOT NULL DEFAULT 1.0,
+  rating_by_customer      SMALLINT CHECK (rating_by_customer BETWEEN 1 AND 5),
+  rating_by_rider         SMALLINT CHECK (rating_by_rider BETWEEN 1 AND 5),
+  cancellation_reason     TEXT,
+  sos_triggered           BOOLEAN NOT NULL DEFAULT FALSE,
+  scheduled_at            TIMESTAMPTZ,
+  accepted_at             TIMESTAMPTZ,
+  completed_at            TIMESTAMPTZ,
+  created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at              TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_rides_customer ON rides(customer_id);
+CREATE INDEX idx_rides_rider ON rides(rider_id);
+CREATE INDEX idx_rides_status ON rides(status);
+CREATE INDEX idx_rides_created ON rides(created_at DESC);
+CREATE INDEX idx_rides_pickup ON rides USING GIST(pickup_location);
+
+-- ─────────────────────────────────────────
+-- ERRANDS
+-- ─────────────────────────────────────────
+CREATE TABLE errands (
   id                    UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   customer_id           UUID NOT NULL REFERENCES users(id),
-  rider_id              UUID REFERENCES riders(id),
+  rider_id              UUID REFERENCES users(id),
+  category              errand_category NOT NULL DEFAULT 'other',
+  description           TEXT NOT NULL,
   pickup_address        TEXT NOT NULL,
   pickup_lat            DOUBLE PRECISION NOT NULL,
   pickup_lng            DOUBLE PRECISION NOT NULL,
-  destination_address   TEXT NOT NULL,
-  destination_lat       DOUBLE PRECISION NOT NULL,
-  destination_lng       DOUBLE PRECISION NOT NULL,
-  vehicle_type          vehicle_type NOT NULL DEFAULT 'normal_bike',
-  estimated_fare        NUMERIC(10,2) NOT NULL,
-  actual_fare           NUMERIC(10,2),
-  distance_km           NUMERIC(8,2),
-  status                ride_status NOT NULL DEFAULT 'searching',
-  note                  TEXT,
-  scheduled_for         TIMESTAMPTZ,
-  is_rated              BOOLEAN NOT NULL DEFAULT FALSE,
-  cancel_reason         TEXT,
+  pickup_location       GEOGRAPHY(POINT, 4326),
+  dropoff_address       TEXT NOT NULL,
+  dropoff_lat           DOUBLE PRECISION NOT NULL,
+  dropoff_lng           DOUBLE PRECISION NOT NULL,
+  dropoff_location      GEOGRAPHY(POINT, 4326),
+  distance_km           NUMERIC(8,2) NOT NULL DEFAULT 0,
+  status                errand_status NOT NULL DEFAULT 'requested',
+  fare_estimate         NUMERIC(10,2) NOT NULL,
+  fare_final            NUMERIC(10,2),
+  payment_status        payment_status NOT NULL DEFAULT 'pending',
+  payment_reference     TEXT,
+  item_value            NUMERIC(10,2),
+  item_description      TEXT,
+  recipient_name        TEXT,
+  recipient_phone       TEXT,
+  proof_of_delivery_url TEXT,
+  rating_by_customer    SMALLINT CHECK (rating_by_customer BETWEEN 1 AND 5),
+  rating_by_rider       SMALLINT CHECK (rating_by_rider BETWEEN 1 AND 5),
+  cancellation_reason   TEXT,
+  scheduled_at          TIMESTAMPTZ,
   accepted_at           TIMESTAMPTZ,
-  started_at            TIMESTAMPTZ,
   completed_at          TIMESTAMPTZ,
-  cancelled_at          TIMESTAMPTZ,
-  created_at            TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  created_at            TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at            TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_rides_customer_id ON rides(customer_id);
-CREATE INDEX idx_rides_rider_id ON rides(rider_id);
-CREATE INDEX idx_rides_status ON rides(status);
-CREATE INDEX idx_rides_created_at ON rides(created_at DESC);
-
--- ─────────────────────────────────────────
--- ERRANDS (deliveries)
--- ─────────────────────────────────────────
-CREATE TABLE errands (
-  id                   UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  customer_id          UUID NOT NULL REFERENCES users(id),
-  rider_id             UUID REFERENCES riders(id),
-  pickup_address       TEXT NOT NULL,
-  pickup_lat           DOUBLE PRECISION NOT NULL,
-  pickup_lng           DOUBLE PRECISION NOT NULL,
-  delivery_address     TEXT NOT NULL,
-  delivery_lat         DOUBLE PRECISION NOT NULL,
-  delivery_lng         DOUBLE PRECISION NOT NULL,
-  item_description     TEXT NOT NULL,
-  item_size            TEXT NOT NULL CHECK (item_size IN ('small', 'medium', 'large')),
-  item_value           NUMERIC(10,2),
-  recipient_name       TEXT,
-  recipient_phone      TEXT,
-  note                 TEXT,
-  stops                JSONB,
-  estimated_fare       NUMERIC(10,2) NOT NULL,
-  actual_fare          NUMERIC(10,2),
-  distance_km          NUMERIC(8,2),
-  status               errand_status NOT NULL DEFAULT 'searching',
-  delivery_proof_url   TEXT,
-  is_rated             BOOLEAN NOT NULL DEFAULT FALSE,
-  cancel_reason        TEXT,
-  accepted_at          TIMESTAMPTZ,
-  picked_up_at         TIMESTAMPTZ,
-  delivered_at         TIMESTAMPTZ,
-  cancelled_at         TIMESTAMPTZ,
-  created_at           TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-
-CREATE INDEX idx_errands_customer_id ON errands(customer_id);
-CREATE INDEX idx_errands_rider_id ON errands(rider_id);
+CREATE INDEX idx_errands_customer ON errands(customer_id);
+CREATE INDEX idx_errands_rider ON errands(rider_id);
 CREATE INDEX idx_errands_status ON errands(status);
-CREATE INDEX idx_errands_created_at ON errands(created_at DESC);
+CREATE INDEX idx_errands_created ON errands(created_at DESC);
 
 -- ─────────────────────────────────────────
--- WALLETS
+-- TRANSACTIONS
 -- ─────────────────────────────────────────
-CREATE TABLE wallets (
-  id           UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  user_id      UUID NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
-  balance      NUMERIC(12,2) NOT NULL DEFAULT 0.00,
-  reserved     NUMERIC(12,2) NOT NULL DEFAULT 0.00, -- amount reserved for pending withdrawals
-  total_earned NUMERIC(12,2) NOT NULL DEFAULT 0.00,
-  updated_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  CONSTRAINT balance_non_negative CHECK (balance >= 0),
-  CONSTRAINT reserved_non_negative CHECK (reserved >= 0)
+CREATE TABLE transactions (
+  id                UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id           UUID NOT NULL REFERENCES users(id),
+  reference         TEXT NOT NULL UNIQUE,
+  type              transaction_type NOT NULL,
+  amount            NUMERIC(12,2) NOT NULL,
+  fee               NUMERIC(12,2) NOT NULL DEFAULT 0,
+  net_amount        NUMERIC(12,2) NOT NULL,
+  currency          TEXT NOT NULL DEFAULT 'KES',
+  status            transaction_status NOT NULL DEFAULT 'pending',
+  gateway           TEXT NOT NULL DEFAULT 'paystack',
+  gateway_response  TEXT,
+  metadata          JSONB,
+  ride_id           UUID REFERENCES rides(id),
+  errand_id         UUID REFERENCES errands(id),
+  created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at        TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_wallets_user_id ON wallets(user_id);
+CREATE INDEX idx_transactions_user ON transactions(user_id);
+CREATE INDEX idx_transactions_reference ON transactions(reference);
+CREATE INDEX idx_transactions_status ON transactions(status);
+CREATE INDEX idx_transactions_created ON transactions(created_at DESC);
 
 -- ─────────────────────────────────────────
--- WALLET TRANSACTIONS
+-- ESCROW
 -- ─────────────────────────────────────────
-CREATE TABLE wallet_transactions (
-  id                 UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  user_id            UUID NOT NULL REFERENCES users(id),
-  type               transaction_type NOT NULL,
-  amount             NUMERIC(12,2) NOT NULL,
-  status             transaction_status NOT NULL DEFAULT 'pending',
-  reference          TEXT UNIQUE,
-  provider           TEXT, -- 'paystack', 'internal'
-  provider_reference TEXT,
-  reference_id       UUID, -- ride_id or errand_id
-  description        TEXT,
-  created_at         TIMESTAMPTZ NOT NULL DEFAULT NOW()
+CREATE TABLE escrow (
+  id                      UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  transaction_reference   TEXT NOT NULL REFERENCES transactions(reference),
+  ride_id                 UUID REFERENCES rides(id),
+  errand_id               UUID REFERENCES errands(id),
+  amount                  NUMERIC(12,2) NOT NULL,
+  status                  escrow_status NOT NULL DEFAULT 'held',
+  held_at                 TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  released_at             TIMESTAMPTZ
 );
 
-CREATE INDEX idx_wallet_txns_user_id ON wallet_transactions(user_id);
-CREATE INDEX idx_wallet_txns_type ON wallet_transactions(type);
-CREATE INDEX idx_wallet_txns_created_at ON wallet_transactions(created_at DESC);
-CREATE INDEX idx_wallet_txns_reference ON wallet_transactions(reference);
-
 -- ─────────────────────────────────────────
--- WITHDRAWALS
+-- PROMO CODES
 -- ─────────────────────────────────────────
-CREATE TABLE withdrawals (
-  id                  UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  user_id             UUID NOT NULL REFERENCES users(id),
-  amount              NUMERIC(12,2) NOT NULL,
-  payout_method       TEXT NOT NULL, -- 'mpesa', 'bank'
-  payout_account      TEXT NOT NULL, -- phone number or account
-  payout_name         TEXT NOT NULL,
-  status              TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'processing', 'completed', 'failed', 'rejected')),
-  paystack_reference  TEXT,
-  failure_reason      TEXT,
-  rejection_reason    TEXT,
-  processed_at        TIMESTAMPTZ,
-  created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
+CREATE TABLE promo_codes (
+  id               UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  code             TEXT NOT NULL UNIQUE,
+  description      TEXT,
+  discount_type    TEXT NOT NULL DEFAULT 'percent',  -- percent | flat
+  discount_value   NUMERIC(10,2) NOT NULL,
+  max_uses         INTEGER,
+  uses_count       INTEGER NOT NULL DEFAULT 0,
+  min_fare         NUMERIC(10,2),
+  max_discount     NUMERIC(10,2),
+  valid_from       TIMESTAMPTZ,
+  valid_until      TIMESTAMPTZ,
+  is_active        BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_withdrawals_user_id ON withdrawals(user_id);
-CREATE INDEX idx_withdrawals_status ON withdrawals(status);
+CREATE TABLE promo_uses (
+  id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  promo_id    UUID NOT NULL REFERENCES promo_codes(id),
+  user_id     UUID NOT NULL REFERENCES users(id),
+  ride_id     UUID REFERENCES rides(id),
+  errand_id   UUID REFERENCES errands(id),
+  discount    NUMERIC(10,2) NOT NULL,
+  used_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE(promo_id, user_id)
+);
 
 -- ─────────────────────────────────────────
 -- NOTIFICATIONS
 -- ─────────────────────────────────────────
 CREATE TABLE notifications (
-  id           UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  user_id      UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  title        TEXT NOT NULL,
-  body         TEXT NOT NULL,
-  type         TEXT NOT NULL,
-  reference_id UUID,
-  is_read      BOOLEAN NOT NULL DEFAULT FALSE,
-  read_at      TIMESTAMPTZ,
-  created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-
-CREATE INDEX idx_notifications_user_id ON notifications(user_id);
-CREATE INDEX idx_notifications_is_read ON notifications(is_read);
-CREATE INDEX idx_notifications_created_at ON notifications(created_at DESC);
-
--- ─────────────────────────────────────────
--- CHAT ROOMS
--- ─────────────────────────────────────────
-CREATE TABLE chat_rooms (
-  id         UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  ride_id    UUID UNIQUE REFERENCES rides(id) ON DELETE SET NULL,
-  errand_id  UUID UNIQUE REFERENCES errands(id) ON DELETE SET NULL,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  CONSTRAINT one_reference CHECK (
-    (ride_id IS NOT NULL AND errand_id IS NULL) OR
-    (ride_id IS NULL AND errand_id IS NOT NULL)
-  )
-);
-
--- ─────────────────────────────────────────
--- CHAT MESSAGES
--- ─────────────────────────────────────────
-CREATE TABLE chat_messages (
-  id           UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  room_id      UUID NOT NULL REFERENCES chat_rooms(id) ON DELETE CASCADE,
-  sender_id    UUID NOT NULL REFERENCES users(id),
-  content      TEXT NOT NULL,
-  message_type TEXT NOT NULL DEFAULT 'text' CHECK (message_type IN ('text', 'image', 'voice', 'location')),
-  media_url    TEXT,
-  is_read      BOOLEAN NOT NULL DEFAULT FALSE,
-  read_at      TIMESTAMPTZ,
-  created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-
-CREATE INDEX idx_chat_messages_room_id ON chat_messages(room_id);
-CREATE INDEX idx_chat_messages_created_at ON chat_messages(room_id, created_at DESC);
-
--- ─────────────────────────────────────────
--- CALL SESSIONS (Agora)
--- ─────────────────────────────────────────
-CREATE TABLE call_sessions (
-  id               UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  channel_name     TEXT NOT NULL UNIQUE,
-  caller_id        UUID NOT NULL REFERENCES users(id),
-  receiver_id      UUID NOT NULL REFERENCES users(id),
-  ride_id          UUID REFERENCES rides(id),
-  errand_id        UUID REFERENCES errands(id),
-  status           TEXT NOT NULL DEFAULT 'initiated' CHECK (status IN ('initiated', 'active', 'ended', 'missed')),
-  duration_seconds INTEGER DEFAULT 0,
-  expires_at       TIMESTAMPTZ NOT NULL,
-  ended_at         TIMESTAMPTZ,
-  created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-
-CREATE INDEX idx_call_sessions_caller_id ON call_sessions(caller_id);
-CREATE INDEX idx_call_sessions_receiver_id ON call_sessions(receiver_id);
-
--- ─────────────────────────────────────────
--- OTP VERIFICATIONS
--- ─────────────────────────────────────────
-CREATE TABLE otp_verifications (
   id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  phone       TEXT NOT NULL,
-  purpose     TEXT NOT NULL, -- 'verification', 'password_reset', 'transaction'
-  code_hash   TEXT NOT NULL,
-  attempts    INTEGER NOT NULL DEFAULT 0,
-  is_used     BOOLEAN NOT NULL DEFAULT FALSE,
-  expires_at  TIMESTAMPTZ NOT NULL,
-  verified_at TIMESTAMPTZ,
+  user_id     UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  title       TEXT NOT NULL,
+  body        TEXT NOT NULL,
+  type        TEXT NOT NULL DEFAULT 'general',
+  data        JSONB,
+  is_read     BOOLEAN NOT NULL DEFAULT FALSE,
   created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_otp_phone_purpose ON otp_verifications(phone, purpose);
-CREATE INDEX idx_otp_created_at ON otp_verifications(created_at);
+CREATE INDEX idx_notifications_user ON notifications(user_id, is_read);
 
 -- ─────────────────────────────────────────
--- REVIEWS & RATINGS
+-- AUDIT LOG
 -- ─────────────────────────────────────────
-CREATE TABLE reviews (
-  id             UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  ride_id        UUID REFERENCES rides(id),
-  errand_id      UUID REFERENCES errands(id),
-  reviewer_id    UUID NOT NULL REFERENCES users(id),
-  reviewee_id    UUID NOT NULL REFERENCES riders(id),
-  reviewer_type  TEXT NOT NULL DEFAULT 'customer',
-  rating         SMALLINT NOT NULL CHECK (rating BETWEEN 1 AND 5),
-  comment        TEXT,
-  created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-
-CREATE INDEX idx_reviews_reviewee_id ON reviews(reviewee_id);
-CREATE INDEX idx_reviews_ride_id ON reviews(ride_id);
-CREATE INDEX idx_reviews_errand_id ON reviews(errand_id);
-
--- ─────────────────────────────────────────
--- ADMIN ACTIONS (audit log)
--- ─────────────────────────────────────────
-CREATE TABLE admin_actions (
+CREATE TABLE audit_log (
   id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  admin_id    UUID NOT NULL REFERENCES users(id),
-  action_type TEXT NOT NULL,
-  target_id   TEXT,
-  details     JSONB,
+  actor_id    UUID REFERENCES users(id),
+  action      TEXT NOT NULL,
+  table_name  TEXT,
+  record_id   UUID,
+  old_data    JSONB,
+  new_data    JSONB,
+  ip_address  TEXT,
+  user_agent  TEXT,
   created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_admin_actions_admin_id ON admin_actions(admin_id);
-CREATE INDEX idx_admin_actions_created_at ON admin_actions(created_at DESC);
+CREATE INDEX idx_audit_log_actor ON audit_log(actor_id);
+CREATE INDEX idx_audit_log_created ON audit_log(created_at DESC);
 
 -- ─────────────────────────────────────────
--- SUPPORT TICKETS
+-- SOS ALERTS
 -- ─────────────────────────────────────────
-CREATE TABLE support_tickets (
+CREATE TABLE sos_alerts (
   id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   user_id     UUID NOT NULL REFERENCES users(id),
-  subject     TEXT NOT NULL,
-  description TEXT NOT NULL,
-  category    TEXT, -- 'payment', 'ride', 'errand', 'account', 'other'
-  status      TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'in_progress', 'resolved', 'closed')),
-  priority    TEXT NOT NULL DEFAULT 'normal' CHECK (priority IN ('low', 'normal', 'high', 'urgent')),
-  resolution  TEXT,
+  ride_id     UUID REFERENCES rides(id),
+  errand_id   UUID REFERENCES errands(id),
+  lat         DOUBLE PRECISION,
+  lng         DOUBLE PRECISION,
+  message     TEXT,
+  resolved    BOOLEAN NOT NULL DEFAULT FALSE,
   resolved_by UUID REFERENCES users(id),
   resolved_at TIMESTAMPTZ,
   created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_support_tickets_user_id ON support_tickets(user_id);
-CREATE INDEX idx_support_tickets_status ON support_tickets(status);
-
 -- ─────────────────────────────────────────
--- PLATFORM SETTINGS
+-- SURGE PRICING ZONES
 -- ─────────────────────────────────────────
-CREATE TABLE platform_settings (
-  id         UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  key        TEXT NOT NULL UNIQUE,
-  value      TEXT NOT NULL,
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+CREATE TABLE surge_zones (
+  id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  name        TEXT NOT NULL,
+  zone        GEOGRAPHY(POLYGON, 4326) NOT NULL,
+  multiplier  NUMERIC(4,2) NOT NULL DEFAULT 1.0,
+  is_active   BOOLEAN NOT NULL DEFAULT TRUE,
+  starts_at   TIMESTAMPTZ,
+  ends_at     TIMESTAMPTZ,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- Default pricing values
-INSERT INTO platform_settings (key, value) VALUES
-  ('base_fare', '100'),
-  ('km_rate', '50'),
-  ('electric_surcharge', '1.2'),
-  ('platform_commission', '0.20'),
-  ('errand_base_fare', '150'),
-  ('rider_match_radius_km', '5'),
-  ('min_withdrawal_kes', '100');
-
--- ─────────────────────────────────────────
--- FRAUD REPORTS
--- ─────────────────────────────────────────
-CREATE TABLE fraud_reports (
-  id           UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  reporter_id  UUID NOT NULL REFERENCES users(id),
-  reported_id  UUID NOT NULL REFERENCES users(id),
-  reason       TEXT NOT NULL,
-  evidence_url TEXT,
-  status       TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'investigating', 'resolved', 'dismissed')),
-  ride_id      UUID REFERENCES rides(id),
-  errand_id    UUID REFERENCES errands(id),
-  created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
+CREATE INDEX idx_surge_zones_geom ON surge_zones USING GIST(zone);
 
 -- ─────────────────────────────────────────
 -- STORED PROCEDURES
 -- ─────────────────────────────────────────
 
--- Credit wallet (atomic)
-CREATE OR REPLACE FUNCTION credit_wallet(p_user_id UUID, p_amount NUMERIC)
-RETURNS VOID LANGUAGE plpgsql AS $$
-BEGIN
-  UPDATE wallets
-  SET balance = balance + p_amount,
-      total_earned = CASE WHEN p_amount > 0 THEN total_earned + p_amount ELSE total_earned END,
-      updated_at = NOW()
-  WHERE user_id = p_user_id;
-
-  IF NOT FOUND THEN
-    RAISE EXCEPTION 'Wallet not found for user %', p_user_id;
-  END IF;
-END;
-$$;
-
--- Deduct from wallet (atomic, with balance check)
-CREATE OR REPLACE FUNCTION deduct_wallet(p_user_id UUID, p_amount NUMERIC)
-RETURNS VOID LANGUAGE plpgsql AS $$
-DECLARE
-  v_balance NUMERIC;
-BEGIN
-  SELECT balance INTO v_balance FROM wallets WHERE user_id = p_user_id FOR UPDATE;
-
-  IF v_balance < p_amount THEN
-    RAISE EXCEPTION 'Insufficient wallet balance. Available: %, Required: %', v_balance, p_amount;
-  END IF;
-
-  UPDATE wallets
-  SET balance = balance - p_amount, updated_at = NOW()
-  WHERE user_id = p_user_id;
-END;
-$$;
-
--- Reserve withdrawal amount
-CREATE OR REPLACE FUNCTION reserve_withdrawal(p_user_id UUID, p_amount NUMERIC)
-RETURNS VOID LANGUAGE plpgsql AS $$
-BEGIN
-  UPDATE wallets
-  SET balance = balance - p_amount,
-      reserved = reserved + p_amount,
-      updated_at = NOW()
-  WHERE user_id = p_user_id AND balance >= p_amount;
-
-  IF NOT FOUND THEN
-    RAISE EXCEPTION 'Insufficient balance for withdrawal';
-  END IF;
-END;
-$$;
-
--- Increment rider trip count
-CREATE OR REPLACE FUNCTION increment_rider_trips(p_rider_id UUID)
-RETURNS VOID LANGUAGE plpgsql AS $$
-BEGIN
-  UPDATE riders SET total_trips = total_trips + 1, updated_at = NOW() WHERE id = p_rider_id;
-END;
-$$;
-
--- ─────────────────────────────────────────
--- FIND NEARBY RIDERS (PostGIS)
--- ─────────────────────────────────────────
-CREATE OR REPLACE FUNCTION find_nearby_riders(
-  p_lat DOUBLE PRECISION,
-  p_lng DOUBLE PRECISION,
-  p_radius_km DOUBLE PRECISION,
-  p_service_type rider_service_type,
-  p_vehicle_type vehicle_type DEFAULT NULL
+-- Find available riders within radius
+CREATE OR REPLACE FUNCTION find_available_riders(
+  p_lat         DOUBLE PRECISION,
+  p_lng         DOUBLE PRECISION,
+  p_radius_km   DOUBLE PRECISION,
+  p_rider_type  TEXT
 )
 RETURNS TABLE (
-  id UUID,
-  user_id UUID,
-  current_lat DOUBLE PRECISION,
-  current_lng DOUBLE PRECISION,
-  rating NUMERIC,
-  acceptance_rate NUMERIC,
-  distance_km DOUBLE PRECISION
-)
-LANGUAGE plpgsql AS $$
-BEGIN
-  RETURN QUERY
+  user_id       UUID,
+  rider_type    rider_type,
+  vehicle_type  vehicle_type,
+  plate_number  TEXT,
+  current_lat   DOUBLE PRECISION,
+  current_lng   DOUBLE PRECISION,
+  rating        NUMERIC,
+  distance_m    DOUBLE PRECISION
+) LANGUAGE SQL AS $$
   SELECT
-    r.id,
-    r.user_id,
-    r.current_lat,
-    r.current_lng,
-    r.rating,
-    r.acceptance_rate,
+    rp.user_id,
+    rp.rider_type,
+    rp.vehicle_type,
+    rp.plate_number,
+    rp.current_lat,
+    rp.current_lng,
+    rp.rating,
     ST_Distance(
-      ST_SetSRID(ST_MakePoint(r.current_lng, r.current_lat), 4326)::geography,
-      ST_SetSRID(ST_MakePoint(p_lng, p_lat), 4326)::geography
-    ) / 1000 AS distance_km
-  FROM riders r
-  JOIN vehicles v ON v.rider_id = r.id
+      rp.current_location,
+      ST_SetSRID(ST_MakePoint(p_lng, p_lat), 4326)::GEOGRAPHY
+    ) AS distance_m
+  FROM rider_profiles rp
   WHERE
-    r.is_online = TRUE
-    AND r.verification_status = 'verified'
-    AND r.service_type = p_service_type
-    AND r.current_lat IS NOT NULL
-    AND r.current_lng IS NOT NULL
-    AND (p_vehicle_type IS NULL OR v.vehicle_type = p_vehicle_type)
+    rp.is_available = TRUE
+    AND rp.is_kyc_verified = TRUE
+    AND rp.rider_type = p_rider_type::rider_type
+    AND rp.current_location IS NOT NULL
     AND ST_DWithin(
-      ST_SetSRID(ST_MakePoint(r.current_lng, r.current_lat), 4326)::geography,
-      ST_SetSRID(ST_MakePoint(p_lng, p_lat), 4326)::geography,
+      rp.current_location,
+      ST_SetSRID(ST_MakePoint(p_lng, p_lat), 4326)::GEOGRAPHY,
       p_radius_km * 1000
     )
-  ORDER BY distance_km ASC;
-END;
+  ORDER BY distance_m ASC
+  LIMIT 20;
+$$;
+
+-- Get active surge multiplier for a location
+CREATE OR REPLACE FUNCTION get_surge_multiplier(p_lat DOUBLE PRECISION, p_lng DOUBLE PRECISION)
+RETURNS NUMERIC LANGUAGE SQL AS $$
+  SELECT COALESCE(MAX(multiplier), 1.0)
+  FROM surge_zones
+  WHERE
+    is_active = TRUE
+    AND (starts_at IS NULL OR starts_at <= NOW())
+    AND (ends_at IS NULL OR ends_at >= NOW())
+    AND ST_Within(
+      ST_SetSRID(ST_MakePoint(p_lng, p_lat), 4326)::GEOMETRY,
+      zone::GEOMETRY
+    );
+$$;
+
+-- Update rider location and geography point
+CREATE OR REPLACE FUNCTION update_rider_location(
+  p_user_id UUID,
+  p_lat DOUBLE PRECISION,
+  p_lng DOUBLE PRECISION
+)
+RETURNS VOID LANGUAGE SQL AS $$
+  UPDATE rider_profiles SET
+    current_lat = p_lat,
+    current_lng = p_lng,
+    current_location = ST_SetSRID(ST_MakePoint(p_lng, p_lat), 4326)::GEOGRAPHY,
+    last_location_update = NOW()
+  WHERE user_id = p_user_id;
 $$;
 
 -- ─────────────────────────────────────────
--- GET SURGE ZONES
--- ─────────────────────────────────────────
-CREATE OR REPLACE FUNCTION get_surge_zones()
-RETURNS TABLE(lat DOUBLE PRECISION, lng DOUBLE PRECISION, multiplier NUMERIC)
-LANGUAGE plpgsql AS $$
-BEGIN
-  RETURN QUERY
-  SELECT
-    AVG(pickup_lat)::DOUBLE PRECISION,
-    AVG(pickup_lng)::DOUBLE PRECISION,
-    CASE
-      WHEN COUNT(*) > 20 THEN 1.5
-      WHEN COUNT(*) > 10 THEN 1.25
-      ELSE 1.0
-    END AS multiplier
-  FROM rides
-  WHERE created_at > NOW() - INTERVAL '30 minutes'
-    AND status = 'searching'
-  GROUP BY
-    ROUND(pickup_lat::NUMERIC, 2),
-    ROUND(pickup_lng::NUMERIC, 2)
-  HAVING COUNT(*) > 5;
-END;
-$$;
-
--- ─────────────────────────────────────────
--- ROW LEVEL SECURITY (RLS)
+-- TRIGGERS
 -- ─────────────────────────────────────────
 
--- Enable RLS on sensitive tables
-ALTER TABLE users ENABLE ROW LEVEL SECURITY;
-ALTER TABLE rides ENABLE ROW LEVEL SECURITY;
-ALTER TABLE errands ENABLE ROW LEVEL SECURITY;
-ALTER TABLE wallets ENABLE ROW LEVEL SECURITY;
-ALTER TABLE wallet_transactions ENABLE ROW LEVEL SECURITY;
-ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
-ALTER TABLE chat_rooms ENABLE ROW LEVEL SECURITY;
-ALTER TABLE chat_messages ENABLE ROW LEVEL SECURITY;
-ALTER TABLE withdrawals ENABLE ROW LEVEL SECURITY;
-ALTER TABLE reviews ENABLE ROW LEVEL SECURITY;
-
--- NOTE: The NestJS backend uses the SERVICE_ROLE key which bypasses RLS.
--- These policies apply to Supabase client-side SDK access only.
-
--- Users can read/update their own record
-CREATE POLICY "users_own_record" ON users
-  FOR ALL USING (auth.uid() = id);
-
--- Wallets — own access
-CREATE POLICY "wallets_own" ON wallets
-  FOR ALL USING (auth.uid() = user_id);
-
--- Rides — customer or rider can access
-CREATE POLICY "rides_participants" ON rides
-  FOR ALL USING (
-    auth.uid() = customer_id OR
-    auth.uid() IN (SELECT user_id FROM riders WHERE id = rides.rider_id)
-  );
-
--- Errands — customer or rider
-CREATE POLICY "errands_participants" ON errands
-  FOR ALL USING (
-    auth.uid() = customer_id OR
-    auth.uid() IN (SELECT user_id FROM riders WHERE id = errands.rider_id)
-  );
-
--- Notifications — own
-CREATE POLICY "notifications_own" ON notifications
-  FOR ALL USING (auth.uid() = user_id);
-
--- ─────────────────────────────────────────
--- UPDATED_AT TRIGGER
--- ─────────────────────────────────────────
-CREATE OR REPLACE FUNCTION trigger_set_updated_at()
+-- Auto update updated_at
+CREATE OR REPLACE FUNCTION set_updated_at()
 RETURNS TRIGGER LANGUAGE plpgsql AS $$
 BEGIN
   NEW.updated_at = NOW();
@@ -654,24 +463,62 @@ BEGIN
 END;
 $$;
 
-CREATE TRIGGER set_updated_at BEFORE UPDATE ON users
-  FOR EACH ROW EXECUTE FUNCTION trigger_set_updated_at();
+CREATE TRIGGER trg_users_updated_at BEFORE UPDATE ON users FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+CREATE TRIGGER trg_rides_updated_at BEFORE UPDATE ON rides FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+CREATE TRIGGER trg_errands_updated_at BEFORE UPDATE ON errands FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+CREATE TRIGGER trg_transactions_updated_at BEFORE UPDATE ON transactions FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 
-CREATE TRIGGER set_updated_at BEFORE UPDATE ON riders
-  FOR EACH ROW EXECUTE FUNCTION trigger_set_updated_at();
+-- Sync geography point when lat/lng updated on rides
+CREATE OR REPLACE FUNCTION sync_ride_locations()
+RETURNS TRIGGER LANGUAGE plpgsql AS $$
+BEGIN
+  NEW.pickup_location  = ST_SetSRID(ST_MakePoint(NEW.pickup_lng, NEW.pickup_lat), 4326)::GEOGRAPHY;
+  NEW.dropoff_location = ST_SetSRID(ST_MakePoint(NEW.dropoff_lng, NEW.dropoff_lat), 4326)::GEOGRAPHY;
+  RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER trg_rides_sync_locations BEFORE INSERT OR UPDATE ON rides FOR EACH ROW EXECUTE FUNCTION sync_ride_locations();
+
+-- Update rider total_rides on completion
+CREATE OR REPLACE FUNCTION update_rider_stats()
+RETURNS TRIGGER LANGUAGE plpgsql AS $$
+BEGIN
+  IF NEW.status = 'completed' AND OLD.status != 'completed' AND NEW.rider_id IS NOT NULL THEN
+    UPDATE rider_profiles SET total_rides = total_rides + 1 WHERE user_id = NEW.rider_id;
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER trg_ride_completed AFTER UPDATE ON rides FOR EACH ROW EXECUTE FUNCTION update_rider_stats();
 
 -- ─────────────────────────────────────────
--- SUPABASE REALTIME PUBLICATION
--- Enable realtime for tables the mobile app subscribes to
+-- ROW LEVEL SECURITY
 -- ─────────────────────────────────────────
-ALTER PUBLICATION supabase_realtime ADD TABLE rides;
-ALTER PUBLICATION supabase_realtime ADD TABLE errands;
-ALTER PUBLICATION supabase_realtime ADD TABLE riders;
-ALTER PUBLICATION supabase_realtime ADD TABLE notifications;
-ALTER PUBLICATION supabase_realtime ADD TABLE chat_messages;
+ALTER TABLE users ENABLE ROW LEVEL SECURITY;
+ALTER TABLE rider_profiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE customer_profiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE rides ENABLE ROW LEVEL SECURITY;
+ALTER TABLE errands ENABLE ROW LEVEL SECURITY;
+ALTER TABLE transactions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
+ALTER TABLE otps ENABLE ROW LEVEL SECURITY;
+ALTER TABLE refresh_tokens ENABLE ROW LEVEL SECURITY;
 
--- ─────────────────────────────────────────
--- STORAGE BUCKETS
--- Run these in Supabase Storage settings or via SQL
--- ─────────────────────────────────────────
--- INSERT INTO storage.buckets (id, name, public) VALUES ('ubike-assets', 'ubike-assets', TRUE);
+-- Service role bypasses RLS (backend API uses service role key)
+-- These policies apply to anon/authenticated Supabase clients only
+
+CREATE POLICY "users_self_read" ON users FOR SELECT USING (auth.uid() = id);
+CREATE POLICY "users_self_update" ON users FOR UPDATE USING (auth.uid() = id);
+
+CREATE POLICY "rider_profiles_self" ON rider_profiles FOR ALL USING (auth.uid() = user_id);
+CREATE POLICY "customer_profiles_self" ON customer_profiles FOR ALL USING (auth.uid() = user_id);
+
+CREATE POLICY "rides_customer_read" ON rides FOR SELECT USING (auth.uid() = customer_id OR auth.uid() = rider_id);
+CREATE POLICY "errands_customer_read" ON errands FOR SELECT USING (auth.uid() = customer_id OR auth.uid() = rider_id);
+
+CREATE POLICY "transactions_self" ON transactions FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "notifications_self" ON notifications FOR ALL USING (auth.uid() = user_id);
+CREATE POLICY "otps_self" ON otps FOR SELECT USING (TRUE); -- controlled by API
+CREATE POLICY "refresh_tokens_self" ON refresh_tokens FOR SELECT USING (auth.uid() = user_id);

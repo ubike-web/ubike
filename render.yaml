@@ -1,107 +1,47 @@
 services:
   - type: web
-    name: ubike-backend
+    name: ubike-api
     runtime: node
-    rootDir: backend
-    buildCommand: npm install --include=dev && npm run build
-    startCommand: node dist/main
-    healthCheckPath: /api/v1/health
-    autoDeploy: true
+    region: oregon
     plan: free
+    rootDir: backend/api
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    healthCheckPath: /health
     envVars:
       - key: NODE_ENV
         value: production
       - key: PORT
-        value: 3001
-      - key: API_PREFIX
-        value: api/v1
-
-      # ── Supabase ──
+        value: "3001"
+      - key: FRONTEND_URL
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: JWT_REFRESH_SECRET
+        sync: false
       - key: SUPABASE_URL
         sync: false
       - key: SUPABASE_ANON_KEY
         sync: false
       - key: SUPABASE_SERVICE_ROLE_KEY
         sync: false
-
-      # ── JWT ──
-      - key: JWT_SECRET
-        sync: false
-      - key: JWT_EXPIRES_IN
-        value: 7d
-      - key: JWT_REFRESH_SECRET
-        sync: false
-      - key: JWT_REFRESH_EXPIRES_IN
-        value: 30d
-
-      # ── Redis ──
       - key: REDIS_URL
         sync: false
-
-      # ── Paystack ──
       - key: PAYSTACK_SECRET_KEY
         sync: false
       - key: PAYSTACK_PUBLIC_KEY
         sync: false
       - key: PAYSTACK_WEBHOOK_SECRET
         sync: false
-      - key: PAYSTACK_BASE_URL
-        value: https://api.paystack.co
-
-      # ── Africa's Talking ──
       - key: AFRICASTALKING_API_KEY
         sync: false
       - key: AFRICASTALKING_USERNAME
         sync: false
-      - key: AFRICASTALKING_SENDER_ID
-        value: UBIKE
-      - key: AFRICASTALKING_ENV
+      - key: ORS_API_KEY
         sync: false
-
-      # ── Mapbox ──
-      - key: MAPBOX_ACCESS_TOKEN
+      - key: ZEGO_APP_ID
         sync: false
-      - key: MAPBOX_BASE_URL
-        value: https://api.mapbox.com
-
-      # ── Agora ──
-      - key: AGORA_APP_ID
+      - key: ZEGO_SERVER_SECRET
         sync: false
-      - key: AGORA_APP_CERTIFICATE
-        sync: false
-
-      # ── OTP ──
-      - key: OTP_EXPIRY_MINUTES
-        value: 5
-      - key: OTP_MAX_ATTEMPTS
-        value: 3
-      - key: OTP_RESEND_COOLDOWN_SECONDS
-        value: 60
-
-      # ── Platform ──
-      - key: PLATFORM_COMMISSION_STANDARD
-        value: 0.20
-      - key: PLATFORM_COMMISSION_ADJUSTED
-        value: 0.25
-      - key: BASE_FARE_KES
-        value: 100
-      - key: KM_RATE_KES
-        value: 50
-      - key: ELECTRIC_SURCHARGE_MULTIPLIER
-        value: 1.2
-      - key: ERRAND_BASE_FARE_KES
-        value: 150
-      - key: RIDER_MATCH_RADIUS_KM
-        value: 5
-      - key: RIDER_REQUEST_TIMEOUT_SECONDS
-        value: 30
-
-      # ── Rate Limiting ──
-      - key: THROTTLE_TTL
-        value: 60
-      - key: THROTTLE_LIMIT
-        value: 100
-
-      # ── Encryption ──
       - key: ENCRYPTION_KEY
         sync: false
