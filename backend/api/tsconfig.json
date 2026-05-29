@@ -13,16 +13,7 @@
     "emitDecoratorMetadata": true,
     "resolveJsonModule": true,
     "skipLibCheck": true,
-    "declaration": false,
-    "paths": {
-      "@/domain/*": ["./src/domain/*"],
-      "@/application/*": ["./src/application/*"],
-      "@/infrastructure/*": ["./src/infrastructure/*"],
-      "@/presentation/*": ["./src/presentation/*"],
-      "@/config/*": ["./src/config/*"],
-      "@/shared/*": ["./src/shared/*"]
-    },
-    "baseUrl": "."
+    "declaration": false
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist"]
