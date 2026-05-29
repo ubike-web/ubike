@@ -5,7 +5,7 @@ import { env } from '../../config/env';
 import { JwtPayload } from '../../shared/types';
 
 export class SocketGateway {
-  private io: Server;
+  private io!: Server;
   private userSockets = new Map<string, string[]>(); // userId -> socketIds
 
   init(httpServer: HttpServer): Server {
