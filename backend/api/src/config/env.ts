@@ -4,7 +4,7 @@ import Joi from 'joi';
 const schema = Joi.object({
   NODE_ENV: Joi.string().valid('development', 'production', 'test').default('development'),
   PORT: Joi.number().default(3001),
-  FRONTEND_URL: Joi.string().required(),
+  FRONTEND_URL: Joi.string().default('https://ubike-admin.vercel.app'),
 
   JWT_SECRET: Joi.string().min(32).required(),
   JWT_EXPIRES_IN: Joi.string().default('7d'),
@@ -15,7 +15,7 @@ const schema = Joi.object({
   SUPABASE_ANON_KEY: Joi.string().required(),
   SUPABASE_SERVICE_ROLE_KEY: Joi.string().required(),
 
-  REDIS_URL: Joi.string().required(),
+  REDIS_URL: Joi.string().allow('').default(''),
 
   PAYSTACK_SECRET_KEY: Joi.string().required(),
   PAYSTACK_PUBLIC_KEY: Joi.string().required(),
