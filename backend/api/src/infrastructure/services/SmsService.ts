@@ -1,4 +1,5 @@
-import AfricasTalking from 'africastalking';
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const AfricasTalking = require('africastalking') as (opts: { apiKey: string; username: string }) => any;
 import { env } from '../../config/env';
 
 const at = AfricasTalking({

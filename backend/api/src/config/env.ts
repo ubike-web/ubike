@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import Joi from 'joi';
 
 const schema = Joi.object({

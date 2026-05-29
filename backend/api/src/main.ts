@@ -1,4 +1,3 @@
-import 'dotenv/config';
 import http from 'http';
 import { env } from './config/env';
 import { createApp } from './config/app';
