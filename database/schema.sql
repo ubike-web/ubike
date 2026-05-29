@@ -1,7 +1,51 @@
 -- ============================================================
 -- u-bike Platform — Supabase PostgreSQL Schema
 -- Run this in the Supabase SQL Editor (Dashboard → SQL)
+-- Safe to re-run — drops everything and recreates from scratch
 -- ============================================================
+
+-- ─────────────────────────────────────────
+-- RESET (drop all old objects)
+-- ─────────────────────────────────────────
+
+-- Drop tables (CASCADE removes dependent objects)
+DROP TABLE IF EXISTS sos_alerts CASCADE;
+DROP TABLE IF EXISTS surge_zones CASCADE;
+DROP TABLE IF EXISTS audit_log CASCADE;
+DROP TABLE IF EXISTS notifications CASCADE;
+DROP TABLE IF EXISTS promo_uses CASCADE;
+DROP TABLE IF EXISTS promo_codes CASCADE;
+DROP TABLE IF EXISTS escrow CASCADE;
+DROP TABLE IF EXISTS transactions CASCADE;
+DROP TABLE IF EXISTS errands CASCADE;
+DROP TABLE IF EXISTS rides CASCADE;
+DROP TABLE IF EXISTS kyc_documents CASCADE;
+DROP TABLE IF EXISTS refresh_tokens CASCADE;
+DROP TABLE IF EXISTS otps CASCADE;
+DROP TABLE IF EXISTS customer_profiles CASCADE;
+DROP TABLE IF EXISTS rider_profiles CASCADE;
+DROP TABLE IF EXISTS users CASCADE;
+
+-- Drop old types from previous schema (NestJS era)
+DROP TYPE IF EXISTS user_role CASCADE;
+DROP TYPE IF EXISTS ride_status CASCADE;
+DROP TYPE IF EXISTS errand_status CASCADE;
+DROP TYPE IF EXISTS payment_status CASCADE;
+DROP TYPE IF EXISTS vehicle_type CASCADE;
+DROP TYPE IF EXISTS rider_type CASCADE;
+DROP TYPE IF EXISTS kyc_status CASCADE;
+DROP TYPE IF EXISTS transaction_type CASCADE;
+DROP TYPE IF EXISTS transaction_status CASCADE;
+DROP TYPE IF EXISTS errand_category CASCADE;
+DROP TYPE IF EXISTS escrow_status CASCADE;
+
+-- Drop old functions/triggers from previous schema
+DROP FUNCTION IF EXISTS find_available_riders CASCADE;
+DROP FUNCTION IF EXISTS get_surge_multiplier CASCADE;
+DROP FUNCTION IF EXISTS update_rider_location CASCADE;
+DROP FUNCTION IF EXISTS set_updated_at CASCADE;
+DROP FUNCTION IF EXISTS sync_ride_locations CASCADE;
+DROP FUNCTION IF EXISTS update_rider_stats CASCADE;
 
 -- Enable extensions
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
