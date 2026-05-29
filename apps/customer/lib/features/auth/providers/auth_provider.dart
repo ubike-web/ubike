@@ -1,82 +1,131 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../../../core/api_client.dart';
 
+class AuthUser {
+  final String id;
+  final String role;
+  final String? phone;
+  final String? email;
+  final String? fullName;
+  final String? avatarUrl;
+  final double walletBalance;
+  final int loyaltyPoints;
+  final String referralCode;
+
+  const AuthUser({
+    required this.id,
+    required this.role,
+    this.phone,
+    this.email,
+    this.fullName,
+    this.avatarUrl,
+    this.walletBalance = 0,
+    this.loyaltyPoints = 0,
+    this.referralCode = '',
+  });
+
+  factory AuthUser.fromJson(Map<String, dynamic> j) => AuthUser(
+    id: j['id'] ?? '',
+    role: j['role'] ?? 'customer',
+    phone: j['phone'],
+    email: j['email'],
+    fullName: j['full_name'],
+    avatarUrl: j['avatar_url'],
+    walletBalance: (j['wallet_balance'] ?? 0).toDouble(),
+    loyaltyPoints: j['loyalty_points'] ?? 0,
+    referralCode: j['referral_code'] ?? '',
+  );
+}
+
 class AuthState {
-  final bool isLoading;
-  final String? userId;
-  final String? role;
+  final bool loading;
+  final AuthUser? user;
   final String? error;
 
-  const AuthState({this.isLoading = false, this.userId, this.role, this.error});
-
-  bool get isAuthenticated => userId != null;
+  const AuthState({this.loading = false, this.user, this.error});
+  bool get isAuthenticated => user != null;
+  AuthState copyWith({bool? loading, AuthUser? user, String? error}) =>
+      AuthState(loading: loading ?? this.loading, user: user ?? this.user, error: error);
 }
 
 class AuthNotifier extends StateNotifier<AuthState> {
-  AuthNotifier() : super(const AuthState()) {
-    _checkSession();
-  }
+  AuthNotifier() : super(const AuthState()) { _restore(); }
 
-  static const _storage = FlutterSecureStorage();
-
-  Future<void> _checkSession() async {
-    final token = await _storage.read(key: 'access_token');
-    if (token != null) {
-      try {
-        final res = await api.get('/auth/me');
-        final user = res.data['data'];
-        state = AuthState(userId: user['id'], role: user['role']);
-      } catch (_) {
-        await _storage.deleteAll();
-      }
+  Future<void> _restore() async {
+    final token = await ApiClient.getToken();
+    if (token == null) return;
+    try {
+      final data = await api.get('/auth/me');
+      state = AuthState(user: AuthUser.fromJson(data as Map<String, dynamic>));
+    } catch (_) {
+      await ApiClient.clearTokens();
     }
   }
 
   Future<void> sendOtp(String phone) async {
-    state = const AuthState(isLoading: true);
+    state = const AuthState(loading: true);
     try {
       await api.post('/auth/otp/send', data: {'phone': phone});
       state = const AuthState();
     } catch (e) {
-      state = AuthState(error: _extractError(e));
-      throw Exception(state.error);
+      state = AuthState(error: _err(e));
+      rethrow;
     }
   }
 
-  Future<void> verifyOtp(String phone, String otp) async {
-    state = const AuthState(isLoading: true);
+  Future<void> verifyOtp(String phone, String otp, {String role = 'customer'}) async {
+    state = const AuthState(loading: true);
     try {
-      final res = await api.post('/auth/otp/verify', data: {'phone': phone, 'otp': otp, 'role': 'customer'});
-      final data = res.data['data'];
-      await _storage.write(key: 'access_token', value: data['tokens']['accessToken']);
-      await _storage.write(key: 'refresh_token', value: data['tokens']['refreshToken']);
-      state = AuthState(userId: data['user']['id'], role: data['user']['role']);
+      final data = await api.post('/auth/otp/verify', data: {'phone': phone, 'otp': otp, 'role': role}) as Map<String, dynamic>;
+      await ApiClient.saveTokens(data['tokens']['accessToken'], data['tokens']['refreshToken']);
+      state = AuthState(user: AuthUser.fromJson(data['user'] as Map<String, dynamic>));
     } catch (e) {
-      state = AuthState(error: _extractError(e));
-      throw Exception(state.error);
+      state = AuthState(error: _err(e));
+      rethrow;
+    }
+  }
+
+  Future<void> registerEmail(String email, String password, String fullName) async {
+    state = const AuthState(loading: true);
+    try {
+      final data = await api.post('/auth/register', data: {'email': email, 'password': password, 'full_name': fullName}) as Map<String, dynamic>;
+      await ApiClient.saveTokens(data['tokens']['accessToken'], data['tokens']['refreshToken']);
+      state = AuthState(user: AuthUser.fromJson(data['user'] as Map<String, dynamic>));
+    } catch (e) {
+      state = AuthState(error: _err(e));
+      rethrow;
+    }
+  }
+
+  Future<void> loginEmail(String email, String password) async {
+    state = const AuthState(loading: true);
+    try {
+      final data = await api.post('/auth/login', data: {'email': email, 'password': password}) as Map<String, dynamic>;
+      await ApiClient.saveTokens(data['tokens']['accessToken'], data['tokens']['refreshToken']);
+      state = AuthState(user: AuthUser.fromJson(data['user'] as Map<String, dynamic>));
+    } catch (e) {
+      state = AuthState(error: _err(e));
+      rethrow;
     }
   }
 
   Future<void> logout() async {
-    try {
-      final refreshToken = await _storage.read(key: 'refresh_token');
-      await api.post('/auth/logout', data: {'refresh_token': refreshToken});
-    } catch (_) {}
-    await _storage.deleteAll();
+    try { await api.post('/auth/logout'); } catch (_) {}
+    await ApiClient.clearTokens();
     state = const AuthState();
   }
 
-  String _extractError(dynamic e) {
-    if (e is Exception) {
-      final msg = e.toString();
-      if (msg.contains('"error"')) {
-        final match = RegExp(r'"error":"([^"]+)"').firstMatch(msg);
-        return match?.group(1) ?? msg;
-      }
-      return msg.replaceFirst('Exception: ', '');
-    }
-    return 'An error occurred';
+  Future<void> refreshUser() async {
+    try {
+      final data = await api.get('/auth/me');
+      state = state.copyWith(user: AuthUser.fromJson(data as Map<String, dynamic>));
+    } catch (_) {}
+  }
+
+  String _err(dynamic e) {
+    final msg = e.toString();
+    final match = RegExp(r'"error":"([^"]+)"').firstMatch(msg);
+    return match?.group(1) ?? msg.replaceFirst('Exception: ', '').replaceFirst('DioException', 'Network error');
   }
 }
 

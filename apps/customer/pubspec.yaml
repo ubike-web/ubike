@@ -1,6 +1,6 @@
 name: ubike_customer
-description: u-bike Customer App — Premium Motorbike Ride-Hailing
-publish_to: 'none'
+description: u-bike Customer App — Premium Motorbike Ride-Hailing & Errands
+publish_to: none
 version: 1.0.0+1
 
 environment:
@@ -9,31 +9,73 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  flutter_riverpod: ^2.4.9
-  riverpod_annotation: ^2.3.3
-  go_router: ^13.0.0
-  dio: ^5.4.0
-  flutter_secure_storage: ^9.0.0
-  google_fonts: ^6.1.0
-  geolocator: ^11.0.0
-  maplibre_gl: ^0.20.0
-  socket_io_client: ^2.0.3+1
-  image_picker: ^1.0.7
+
+  # State management
+  flutter_riverpod: ^2.5.1
+  riverpod_annotation: ^2.3.5
+
+  # Navigation
+  go_router: ^13.2.0
+
+  # HTTP & API
+  dio: ^5.4.3
+  pretty_dio_logger: ^1.3.1
+
+  # Auth & Storage
+  flutter_secure_storage: ^9.2.2
+  shared_preferences: ^2.2.3
+
+  # Maps
+  flutter_map: ^6.1.0
+  latlong2: ^0.9.1
+  flutter_map_location_marker: ^8.0.5
+  flutter_map_cancellable_tile_provider: ^2.0.0
+
+  # Location
+  geolocator: ^12.0.0
+  geocoding: ^3.0.0
+
+  # UI & Fonts
+  google_fonts: ^6.2.1
   cached_network_image: ^3.3.1
-  intl: ^0.19.0
-  shared_preferences: ^2.2.2
-  permission_handler: ^11.3.0
+  shimmer: ^3.0.0
+  lottie: ^3.1.2
   pinput: ^3.0.1
-  lottie: ^3.0.0
+  dotted_border: ^2.1.0
+  fl_chart: ^0.68.0
+  timeline_tile: ^2.0.0
+  step_progress_indicator: ^1.0.2
+
+  # Media
+  image_picker: ^1.1.2
+  file_picker: ^8.0.0+1
+
+  # Realtime
+  socket_io_client: ^2.0.3+1
+
+  # Permissions
+  permission_handler: ^11.3.1
+
+  # Utils
+  intl: ^0.19.0
+  uuid: ^4.3.3
+  url_launcher: ^6.3.0
+  share_plus: ^9.0.0
+  path_provider: ^2.1.4
+  connectivity_plus: ^6.0.3
+  flutter_animate: ^4.5.0
+  gap: ^3.0.1
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  build_runner: ^2.4.7
-  riverpod_generator: ^2.3.9
-  flutter_lints: ^3.0.0
+  build_runner: ^2.4.9
+  riverpod_generator: ^2.4.3
+  flutter_lints: ^4.0.0
 
 flutter:
   uses-material-design: true
   assets:
     - assets/images/
+    - assets/animations/
+    - assets/icons/

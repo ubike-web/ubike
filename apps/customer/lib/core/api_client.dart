@@ -1,53 +1,50 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-
-const _baseUrl = String.fromEnvironment('API_URL', defaultValue: 'https://ubike-api.onrender.com/api/v1');
+import 'constants.dart';
 
 class ApiClient {
-  static final ApiClient _instance = ApiClient._();
-  factory ApiClient() => _instance;
+  static final ApiClient _i = ApiClient._();
+  factory ApiClient() => _i;
   ApiClient._() { _init(); }
 
   late final Dio _dio;
-  final _storage = const FlutterSecureStorage();
+  static const _storage = FlutterSecureStorage();
 
   void _init() {
     _dio = Dio(BaseOptions(
-      baseUrl: _baseUrl,
+      baseUrl: kApiUrl,
       connectTimeout: const Duration(seconds: 30),
       receiveTimeout: const Duration(seconds: 30),
       headers: {'Content-Type': 'application/json'},
     ));
 
     _dio.interceptors.add(InterceptorsWrapper(
-      onRequest: (options, handler) async {
+      onRequest: (opt, handler) async {
         final token = await _storage.read(key: 'access_token');
-        if (token != null) options.headers['Authorization'] = 'Bearer $token';
-        handler.next(options);
+        if (token != null) opt.headers['Authorization'] = 'Bearer $token';
+        handler.next(opt);
       },
-      onError: (error, handler) async {
-        if (error.response?.statusCode == 401) {
-          final refreshed = await _refreshToken();
-          if (refreshed) {
+      onError: (err, handler) async {
+        if (err.response?.statusCode == 401) {
+          if (await _refresh()) {
             final token = await _storage.read(key: 'access_token');
-            error.requestOptions.headers['Authorization'] = 'Bearer $token';
-            final response = await _dio.fetch(error.requestOptions);
-            return handler.resolve(response);
+            err.requestOptions.headers['Authorization'] = 'Bearer $token';
+            return handler.resolve(await _dio.fetch(err.requestOptions));
           }
         }
-        handler.next(error);
+        handler.next(err);
       },
     ));
   }
 
-  Future<bool> _refreshToken() async {
+  Future<bool> _refresh() async {
     try {
-      final refreshToken = await _storage.read(key: 'refresh_token');
-      if (refreshToken == null) return false;
-      final response = await _dio.post('/auth/refresh', data: {'refresh_token': refreshToken});
-      final data = response.data['data'];
-      await _storage.write(key: 'access_token', value: data['accessToken']);
-      await _storage.write(key: 'refresh_token', value: data['refreshToken']);
+      final rt = await _storage.read(key: 'refresh_token');
+      if (rt == null) return false;
+      final res = await _dio.post('/auth/refresh', data: {'refresh_token': rt});
+      final d = res.data['data'];
+      await _storage.write(key: 'access_token', value: d['accessToken']);
+      await _storage.write(key: 'refresh_token', value: d['refreshToken']);
       return true;
     } catch (_) {
       await _storage.deleteAll();
@@ -55,16 +52,33 @@ class ApiClient {
     }
   }
 
-  Future<Response> get(String path, {Map<String, dynamic>? params}) =>
-      _dio.get(path, queryParameters: params);
+  Future<dynamic> get(String path, {Map<String, dynamic>? params}) async {
+    final r = await _dio.get(path, queryParameters: params);
+    return r.data['data'];
+  }
 
-  Future<Response> post(String path, {dynamic data}) =>
-      _dio.post(path, data: data);
+  Future<dynamic> post(String path, {dynamic data}) async {
+    final r = await _dio.post(path, data: data);
+    return r.data['data'];
+  }
 
-  Future<Response> patch(String path, {dynamic data}) =>
-      _dio.patch(path, data: data);
+  Future<dynamic> patch(String path, {dynamic data}) async {
+    final r = await _dio.patch(path, data: data);
+    return r.data['data'];
+  }
 
-  Future<Response> delete(String path) => _dio.delete(path);
+  Future<dynamic> delete(String path) async {
+    final r = await _dio.delete(path);
+    return r.data['data'];
+  }
+
+  static Future<void> saveTokens(String access, String refresh) async {
+    await _storage.write(key: 'access_token', value: access);
+    await _storage.write(key: 'refresh_token', value: refresh);
+  }
+
+  static Future<void> clearTokens() async => _storage.deleteAll();
+  static Future<String?> getToken() async => _storage.read(key: 'access_token');
 }
 
 final api = ApiClient();
