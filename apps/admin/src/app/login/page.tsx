@@ -529,9 +529,9 @@ function RegisterForm({ onSwitch }: { onSwitch: () => void }) {
     }
     if (password.length < 8) { setError('Password must be at least 8 characters'); return; }
     setLoading(true);
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://ubike-api.onrender.com/api/v1';
     try {
-      const res = await fetch(`${apiUrl}/auth/register`, {
+      // Use same-origin proxy — no CORS ever
+      const res = await fetch('/api/proxy/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ full_name: name, email, password, role: 'admin' }),
@@ -541,12 +541,10 @@ function RegisterForm({ onSwitch }: { onSwitch: () => void }) {
       if (data.data?.tokens?.accessToken) {
         localStorage.setItem('ubike_admin_token', data.data.tokens.accessToken);
       }
-      alert('Account created! Please sign in.');
+      alert('✅ Account created! Please sign in.');
       onSwitch();
     } catch (err: any) {
-      setError(err.message === 'Failed to fetch'
-        ? 'Cannot reach API. Check your internet or the API may be sleeping (Render free tier takes ~30s to wake).'
-        : err.message);
+      setError(err.message || 'Registration failed. Try again in 30s (API cold start).');
     } finally { setLoading(false); }
   };
 

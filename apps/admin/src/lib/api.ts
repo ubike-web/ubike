@@ -1,10 +1,12 @@
 import axios from 'axios';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://ubike-api.onrender.com/api/v1';
+// Use /api/proxy/* so all requests go through Next.js server-side proxy.
+// This eliminates CORS issues entirely — browser talks to same origin.
+const PROXY_BASE = '/api/proxy';
 
 export const api = axios.create({
-  baseURL: API_URL,
-  timeout: 30000,
+  baseURL: PROXY_BASE,
+  timeout: 60000, // 60s to allow Render cold start
 });
 
 api.interceptors.request.use(config => {
