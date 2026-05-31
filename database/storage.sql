@@ -1,249 +1,231 @@
 -- ============================================================
--- u-bike Storage Setup
--- Run this ONCE in Supabase SQL Editor → New query
--- DO NOT run the full schema.sql again — just this file
+-- u-bike Storage Policies & Helpers
+-- Supabase SQL Editor → New query → paste this → Run
+--
+-- BEFORE running this, create 3 buckets manually:
+--   Dashboard → Storage → New bucket:
+--     1. avatars          (toggle Public ON,  5 MB limit)
+--     2. kyc-documents    (toggle Public OFF, 10 MB limit)
+--     3. delivery-proofs  (toggle Public ON,  5 MB limit)
 -- ============================================================
 
--- ─────────────────────────────────────────
--- 1. CREATE STORAGE BUCKETS
--- ─────────────────────────────────────────
-
--- Profile photos (customers + riders)
-INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
-VALUES (
-  'avatars',
-  'avatars',
-  true,                          -- public = URL is readable without auth
-  5242880,                       -- 5 MB max
-  ARRAY['image/jpeg','image/jpg','image/png','image/webp']
-)
-ON CONFLICT (id) DO UPDATE SET
-  public = true,
-  file_size_limit = 5242880,
-  allowed_mime_types = ARRAY['image/jpeg','image/jpg','image/png','image/webp'];
-
--- KYC documents (license, national ID, vehicle photo, insurance)
-INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
-VALUES (
-  'kyc-documents',
-  'kyc-documents',
-  false,                         -- private — only backend/admin can read
-  10485760,                      -- 10 MB
-  ARRAY['image/jpeg','image/jpg','image/png','image/webp','application/pdf']
-)
-ON CONFLICT (id) DO UPDATE SET
-  public = false,
-  file_size_limit = 10485760;
-
--- Proof of delivery photos (errands completion)
-INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
-VALUES (
-  'delivery-proofs',
-  'delivery-proofs',
-  true,
-  5242880,
-  ARRAY['image/jpeg','image/jpg','image/png','image/webp']
-)
-ON CONFLICT (id) DO UPDATE SET
-  public = true,
-  file_size_limit = 5242880;
 
 -- ─────────────────────────────────────────
--- 2. STORAGE RLS POLICIES — avatars bucket
+-- AVATARS BUCKET — public profile photos
 -- ─────────────────────────────────────────
 
--- Anyone can view avatar images (they are public)
+-- Anyone can view (public bucket)
 DROP POLICY IF EXISTS "avatars_public_read" ON storage.objects;
 CREATE POLICY "avatars_public_read"
   ON storage.objects FOR SELECT
   USING (bucket_id = 'avatars');
 
--- Users can upload their own avatar
--- File path must be: avatars/{user_id}/avatar.jpg
-DROP POLICY IF EXISTS "avatars_owner_upload" ON storage.objects;
-CREATE POLICY "avatars_owner_upload"
+-- User can upload their own avatar
+-- File path: {user_id}/avatar.jpg
+DROP POLICY IF EXISTS "avatars_owner_insert" ON storage.objects;
+CREATE POLICY "avatars_owner_insert"
   ON storage.objects FOR INSERT
   WITH CHECK (
     bucket_id = 'avatars'
-    AND auth.uid()::text = (storage.foldername(name))[1]
+    AND (storage.foldername(name))[1] = auth.uid()::text
   );
 
--- Users can update (replace) their own avatar
+-- User can overwrite (update) their own avatar
 DROP POLICY IF EXISTS "avatars_owner_update" ON storage.objects;
 CREATE POLICY "avatars_owner_update"
   ON storage.objects FOR UPDATE
   USING (
     bucket_id = 'avatars'
-    AND auth.uid()::text = (storage.foldername(name))[1]
+    AND (storage.foldername(name))[1] = auth.uid()::text
   );
 
--- Users can delete their own avatar
+-- User can delete their own avatar
 DROP POLICY IF EXISTS "avatars_owner_delete" ON storage.objects;
 CREATE POLICY "avatars_owner_delete"
   ON storage.objects FOR DELETE
   USING (
     bucket_id = 'avatars'
-    AND auth.uid()::text = (storage.foldername(name))[1]
+    AND (storage.foldername(name))[1] = auth.uid()::text
   );
 
+
 -- ─────────────────────────────────────────
--- 3. STORAGE RLS POLICIES — kyc-documents bucket
+-- KYC-DOCUMENTS BUCKET — private rider docs
 -- ─────────────────────────────────────────
 
--- Riders can upload their own KYC documents
-DROP POLICY IF EXISTS "kyc_rider_upload" ON storage.objects;
-CREATE POLICY "kyc_rider_upload"
+-- Rider can upload their own documents
+DROP POLICY IF EXISTS "kyc_owner_insert" ON storage.objects;
+CREATE POLICY "kyc_owner_insert"
   ON storage.objects FOR INSERT
   WITH CHECK (
     bucket_id = 'kyc-documents'
-    AND auth.uid()::text = (storage.foldername(name))[1]
+    AND (storage.foldername(name))[1] = auth.uid()::text
   );
 
--- Riders can read their own documents
-DROP POLICY IF EXISTS "kyc_rider_read" ON storage.objects;
-CREATE POLICY "kyc_rider_read"
+-- Rider can read their own documents
+DROP POLICY IF EXISTS "kyc_owner_read" ON storage.objects;
+CREATE POLICY "kyc_owner_read"
   ON storage.objects FOR SELECT
   USING (
     bucket_id = 'kyc-documents'
-    AND auth.uid()::text = (storage.foldername(name))[1]
+    AND (storage.foldername(name))[1] = auth.uid()::text
   );
 
--- Service role (backend/admin) can read all KYC documents
--- (handled automatically via service role key — no policy needed)
+-- Rider can replace their documents
+DROP POLICY IF EXISTS "kyc_owner_update" ON storage.objects;
+CREATE POLICY "kyc_owner_update"
+  ON storage.objects FOR UPDATE
+  USING (
+    bucket_id = 'kyc-documents'
+    AND (storage.foldername(name))[1] = auth.uid()::text
+  );
+
 
 -- ─────────────────────────────────────────
--- 4. STORAGE RLS POLICIES — delivery-proofs bucket
+-- DELIVERY-PROOFS BUCKET — errand completion photos
 -- ─────────────────────────────────────────
 
+-- Anyone can view proof photos (public bucket)
 DROP POLICY IF EXISTS "proofs_public_read" ON storage.objects;
 CREATE POLICY "proofs_public_read"
   ON storage.objects FOR SELECT
   USING (bucket_id = 'delivery-proofs');
 
-DROP POLICY IF EXISTS "proofs_rider_upload" ON storage.objects;
-CREATE POLICY "proofs_rider_upload"
+-- Rider can upload delivery proof
+DROP POLICY IF EXISTS "proofs_rider_insert" ON storage.objects;
+CREATE POLICY "proofs_rider_insert"
   ON storage.objects FOR INSERT
   WITH CHECK (
     bucket_id = 'delivery-proofs'
-    AND auth.uid()::text = (storage.foldername(name))[1]
+    AND (storage.foldername(name))[1] = auth.uid()::text
   );
 
+
 -- ─────────────────────────────────────────
--- 5. ENSURE avatar_url COLUMN EXISTS ON users
+-- ENSURE avatar_url COLUMN EXISTS on users
+-- (already in schema.sql — safety net only)
 -- ─────────────────────────────────────────
 
--- (Already in schema — this is a safety net)
 DO $$
 BEGIN
   IF NOT EXISTS (
     SELECT 1 FROM information_schema.columns
-    WHERE table_name = 'users' AND column_name = 'avatar_url'
+    WHERE table_schema = 'public'
+      AND table_name   = 'users'
+      AND column_name  = 'avatar_url'
   ) THEN
-    ALTER TABLE users ADD COLUMN avatar_url TEXT;
+    ALTER TABLE public.users ADD COLUMN avatar_url TEXT;
   END IF;
 END $$;
 
--- ─────────────────────────────────────────
--- 6. FUNCTION — auto-update avatar_url on upload
--- ─────────────────────────────────────────
--- When a file is uploaded to avatars/{user_id}/avatar.*
--- automatically update users.avatar_url with the public URL
-
-CREATE OR REPLACE FUNCTION storage.handle_avatar_upload()
-RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER AS $$
-DECLARE
-  v_user_id UUID;
-  v_public_url TEXT;
-BEGIN
-  -- Only handle avatars bucket
-  IF NEW.bucket_id != 'avatars' THEN
-    RETURN NEW;
-  END IF;
-
-  -- Extract user_id from path: avatars/{user_id}/avatar.jpg
-  BEGIN
-    v_user_id := (storage.foldername(NEW.name))[1]::UUID;
-  EXCEPTION WHEN OTHERS THEN
-    RETURN NEW;
-  END;
-
-  -- Build public URL
-  v_public_url := 'https://wkqbbovazwphkeeurinz.supabase.co/storage/v1/object/public/avatars/' || NEW.name;
-
-  -- Update users table
-  UPDATE public.users
-  SET avatar_url = v_public_url,
-      updated_at = NOW()
-  WHERE id = v_user_id;
-
-  RETURN NEW;
-END;
-$$;
-
--- Attach trigger to storage.objects
-DROP TRIGGER IF EXISTS trg_avatar_upload ON storage.objects;
-CREATE TRIGGER trg_avatar_upload
-  AFTER INSERT OR UPDATE ON storage.objects
-  FOR EACH ROW
-  EXECUTE FUNCTION storage.handle_avatar_upload();
 
 -- ─────────────────────────────────────────
--- 7. FUNCTION — remove avatar_url when file deleted
+-- FUNCTION — set avatar_url (called by backend after upload)
+-- The backend calls this via RPC after a successful storage upload.
+-- This is what makes the photo survive reloads — it's stored in the
+-- users table, not just in storage, so it loads on every app open.
 -- ─────────────────────────────────────────
 
-CREATE OR REPLACE FUNCTION storage.handle_avatar_delete()
-RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER AS $$
-DECLARE
-  v_user_id UUID;
-BEGIN
-  IF OLD.bucket_id != 'avatars' THEN
-    RETURN OLD;
-  END IF;
-
-  BEGIN
-    v_user_id := (storage.foldername(OLD.name))[1]::UUID;
-  EXCEPTION WHEN OTHERS THEN
-    RETURN OLD;
-  END;
-
-  -- Clear avatar_url only if it points to this file
-  UPDATE public.users
-  SET avatar_url = NULL,
-      updated_at = NOW()
-  WHERE id = v_user_id
-    AND avatar_url LIKE '%' || OLD.name || '%';
-
-  RETURN OLD;
-END;
-$$;
-
-DROP TRIGGER IF EXISTS trg_avatar_delete ON storage.objects;
-CREATE TRIGGER trg_avatar_delete
-  AFTER DELETE ON storage.objects
-  FOR EACH ROW
-  EXECUTE FUNCTION storage.handle_avatar_delete();
-
--- ─────────────────────────────────────────
--- 8. HELPER FUNCTION — get signed URL for KYC docs
--- (called from backend to generate temporary read URLs)
--- ─────────────────────────────────────────
-
-CREATE OR REPLACE FUNCTION get_kyc_signed_url(
-  p_user_id UUID,
-  p_filename TEXT,
-  p_expires_in INT DEFAULT 3600
+CREATE OR REPLACE FUNCTION public.set_avatar_url(
+  p_user_id  UUID,
+  p_url      TEXT
 )
-RETURNS TEXT LANGUAGE plpgsql SECURITY DEFINER AS $$
+RETURNS VOID
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
 BEGIN
-  -- Returns the storage path — backend generates actual signed URL
-  -- via Supabase client: storage.from('kyc-documents').createSignedUrl(path, 3600)
-  RETURN 'kyc-documents/' || p_user_id::TEXT || '/' || p_filename;
+  UPDATE public.users
+  SET    avatar_url = p_url,
+         updated_at = NOW()
+  WHERE  id = p_user_id;
 END;
 $$;
 
+
 -- ─────────────────────────────────────────
--- DONE — Buckets created:
---   avatars        (public)    → profile photos
---   kyc-documents  (private)   → rider KYC files
---   delivery-proofs (public)   → errand completion photos
+-- FUNCTION — clear avatar_url (called by backend on delete)
 -- ─────────────────────────────────────────
+
+CREATE OR REPLACE FUNCTION public.clear_avatar_url(
+  p_user_id UUID
+)
+RETURNS VOID
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  UPDATE public.users
+  SET    avatar_url = NULL,
+         updated_at = NOW()
+  WHERE  id = p_user_id;
+END;
+$$;
+
+
+-- ─────────────────────────────────────────
+-- FUNCTION — get KYC document path
+-- Returns the storage path so backend can generate a signed URL
+-- ─────────────────────────────────────────
+
+CREATE OR REPLACE FUNCTION public.get_kyc_path(
+  p_user_id UUID,
+  p_doc_type TEXT   -- 'license' | 'national_id' | 'vehicle_photo' | 'insurance'
+)
+RETURNS TEXT
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+AS $$
+  SELECT 'kyc-documents/' || p_user_id::text || '/' || p_doc_type || '.jpg';
+$$;
+
+
+-- ─────────────────────────────────────────
+-- VIEW — rider profile with avatar (useful for admin dashboard)
+-- ─────────────────────────────────────────
+
+CREATE OR REPLACE VIEW public.riders_with_avatar AS
+SELECT
+  u.id,
+  u.full_name,
+  u.phone,
+  u.email,
+  u.avatar_url,
+  u.role,
+  u.is_active,
+  rp.rider_type,
+  rp.vehicle_type,
+  rp.plate_number,
+  rp.is_available,
+  rp.is_kyc_verified,
+  rp.rating,
+  rp.total_rides,
+  rp.earnings_total
+FROM public.users u
+LEFT JOIN public.rider_profiles rp ON rp.user_id = u.id
+WHERE u.role IN ('passenger_rider', 'errands_rider');
+
+
+-- ─────────────────────────────────────────
+-- VIEW — customers with avatar
+-- ─────────────────────────────────────────
+
+CREATE OR REPLACE VIEW public.customers_with_avatar AS
+SELECT
+  u.id,
+  u.full_name,
+  u.phone,
+  u.email,
+  u.avatar_url,
+  u.wallet_balance,
+  u.loyalty_points,
+  u.referral_code,
+  u.created_at,
+  cp.home_address,
+  cp.work_address
+FROM public.users u
+LEFT JOIN public.customer_profiles cp ON cp.user_id = u.id
+WHERE u.role = 'customer';
