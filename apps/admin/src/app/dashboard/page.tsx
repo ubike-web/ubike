@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import { fetchDashboard } from '@/lib/api';
-import { Users, Bike, Package, DollarSign, Loader2, TrendingUp, Activity } from 'lucide-react';
+import { useAuthStore } from '@/lib/auth-store';
 
-interface DashboardStats {
+interface Stats {
   totalUsers: number;
   activeRiders: number;
   totalRides: number;
@@ -13,90 +13,149 @@ interface DashboardStats {
   totalRevenue: number;
 }
 
-function StatCard({ label, value, icon: Icon, color, bg, trend }: { label: string; value: string | number; icon: React.ElementType; color: string; bg: string; trend?: string }) {
+const card: React.CSSProperties = {
+  background: '#fff',
+  borderRadius: '16px',
+  padding: '20px',
+  border: '1px solid #DDE8F0',
+  boxShadow: '0 2px 8px rgba(14,134,202,0.06)',
+};
+
+function StatCard({ label, value, icon, accent }: { label: string; value: string | number; icon: string; accent: string }) {
   return (
-    <div className="bg-white rounded-2xl p-5 border border-[#DDE8F0] shadow-sm hover:shadow-md transition-shadow">
-      <div className="flex items-center justify-between mb-3">
-        <span className="text-sm font-medium text-[#6B7A8D]">{label}</span>
-        <div className={`p-2 rounded-xl ${bg}`}>
-          <Icon size={18} className={color} />
+    <div style={{ ...card, display: 'flex', flexDirection: 'column', gap: '12px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <span style={{ fontSize: '13px', color: '#6B7A8D', fontWeight: 500 }}>{label}</span>
+        <div style={{ width: '38px', height: '38px', borderRadius: '10px', background: accent + '18', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px' }}>
+          {icon}
         </div>
       </div>
-      <div className="text-2xl font-bold text-[#0A1A3E]">{value}</div>
-      {trend && <div className="text-xs text-[#2E7D32] mt-1 flex items-center gap-1"><TrendingUp size={12} />{trend}</div>}
+      <div style={{ fontSize: '26px', fontWeight: 800, color: '#0A1A3E' }}>{value}</div>
     </div>
   );
 }
 
+function QuickLink({ href, label, color }: { href: string; label: string; color: string }) {
+  return (
+    <a href={href} style={{
+      display: 'block', padding: '12px 16px', borderRadius: '12px', textDecoration: 'none',
+      border: `1px solid ${color}30`, background: color + '0D',
+      color, fontWeight: 600, fontSize: '13px', textAlign: 'center' as const,
+      transition: 'all 0.15s ease',
+    }}
+      onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = color + '20'; }}
+      onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = color + '0D'; }}
+    >
+      {label}
+    </a>
+  );
+}
+
 export default function DashboardPage() {
-  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const user = useAuthStore(s => s.user);
 
   useEffect(() => {
     fetchDashboard()
       .then(setStats)
-      .catch(e => setError(e.response?.data?.error || 'Failed to load'))
+      .catch(e => setError(e.response?.data?.error || 'Failed to load stats'))
       .finally(() => setLoading(false));
   }, []);
 
   if (loading) return (
-    <div className="flex items-center justify-center h-64">
-      <Loader2 className="animate-spin text-[#0E86CA]" size={32} />
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh' }}>
+      <div style={{ textAlign: 'center' }}>
+        <div style={{ width: '40px', height: '40px', border: '3px solid #E3F4FD', borderTopColor: '#0E86CA', borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto 12px' }} />
+        <p style={{ color: '#6B7A8D', fontSize: '14px' }}>Loading dashboard...</p>
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      </div>
     </div>
   );
 
-  if (error) return <div className="text-red-600 bg-red-50 rounded-xl p-4 border border-red-200">{error}</div>;
+  if (error) return (
+    <div style={{ background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: '12px', padding: '16px', color: '#DC2626' }}>{error}</div>
+  );
 
   return (
-    <div>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+
       {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-[#0A1A3E]">Dashboard</h1>
-        <p className="text-[#6B7A8D] text-sm mt-1">Welcome back. Here's what's happening today.</p>
+      <div>
+        <h1 style={{ fontSize: '26px', fontWeight: 800, color: '#0A1A3E', margin: 0 }}>Dashboard</h1>
+        <p style={{ color: '#6B7A8D', fontSize: '14px', margin: '4px 0 0' }}>
+          Welcome back, {user?.email?.split('@')[0] || 'Admin'}. Here's what's happening.
+        </p>
       </div>
 
-      {/* Hero metric */}
-      <div className="ocean-gradient rounded-2xl p-6 mb-6 text-white">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-white/80 text-sm font-medium mb-1">Total Revenue</p>
-            <p className="text-4xl font-black">KES {stats!.totalRevenue?.toLocaleString()}</p>
-            <p className="text-white/70 text-xs mt-2">Platform earnings all time</p>
-          </div>
-          <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center">
-            <DollarSign size={32} className="text-white" />
-          </div>
+      {/* Hero revenue card */}
+      <div style={{
+        background: 'linear-gradient(135deg, #0A2D6E 0%, #0E86CA 60%, #42C8F5 100%)',
+        borderRadius: '20px',
+        padding: '28px 32px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        boxShadow: '0 8px 32px rgba(14,134,202,0.3)',
+      }}>
+        <div>
+          <p style={{ color: 'rgba(255,255,255,0.75)', fontSize: '13px', margin: '0 0 6px', fontWeight: 500 }}>Total Revenue</p>
+          <p style={{ color: '#fff', fontSize: '40px', fontWeight: 900, margin: 0, lineHeight: 1 }}>
+            KES {stats?.totalRevenue?.toLocaleString() || '0'}
+          </p>
+          <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '12px', margin: '8px 0 0' }}>Platform earnings all time</p>
         </div>
+        <div style={{ fontSize: '64px', opacity: 0.8 }}>💰</div>
       </div>
 
       {/* Stats grid */}
-      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
-        <StatCard label="Total Users" value={stats!.totalUsers?.toLocaleString()} icon={Users} color="text-[#0E86CA]" bg="bg-[#E3F4FD]" trend="+12% this week" />
-        <StatCard label="Online Riders" value={stats!.activeRiders} icon={Activity} color="text-[#2E7D32]" bg="bg-green-50" />
-        <StatCard label="Total Rides" value={stats!.totalRides?.toLocaleString()} icon={Bike} color="text-[#0E86CA]" bg="bg-[#E3F4FD]" />
-        <StatCard label="Active Rides" value={stats!.activeRides} icon={Bike} color="text-[#F57C00]" bg="bg-orange-50" />
-        <StatCard label="Total Errands" value={stats!.totalErrands?.toLocaleString()} icon={Package} color="text-[#6A1B9A]" bg="bg-purple-50" />
-        <StatCard label="Riders Online" value={stats!.activeRiders} icon={Users} color="text-[#2E7D32]" bg="bg-green-50" />
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '16px' }}>
+        <StatCard label="Total Users"    value={stats?.totalUsers?.toLocaleString() || '0'} icon="👥" accent="#0E86CA" />
+        <StatCard label="Online Riders"  value={stats?.activeRiders || 0}                   icon="🟢" accent="#16A34A" />
+        <StatCard label="Total Rides"    value={stats?.totalRides?.toLocaleString() || '0'} icon="🏍" accent="#0E86CA" />
+        <StatCard label="Active Rides"   value={stats?.activeRides || 0}                    icon="⚡" accent="#D97706" />
+        <StatCard label="Total Errands"  value={stats?.totalErrands?.toLocaleString() || '0'} icon="📦" accent="#7C3AED" />
       </div>
 
       {/* Quick actions */}
-      <div className="bg-white rounded-2xl p-5 border border-[#DDE8F0]">
-        <h2 className="text-base font-semibold text-[#0A1A3E] mb-4">Quick Actions</h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          {[
-            { href: '/dashboard/kyc', label: 'Review KYC', color: 'text-[#0E86CA] bg-[#E3F4FD] border-[#0E86CA]/20' },
-            { href: '/dashboard/users', label: 'Manage Users', color: 'text-[#0A2D6E] bg-blue-50 border-blue-200' },
-            { href: '/dashboard/rides', label: 'Live Rides', color: 'text-[#F57C00] bg-orange-50 border-orange-200' },
-            { href: '/dashboard/reports', label: 'Revenue Report', color: 'text-[#2E7D32] bg-green-50 border-green-200' },
-          ].map(l => (
-            <a key={l.href} href={l.href}
-              className={`border rounded-xl px-4 py-3 text-sm text-center font-medium transition-all hover:shadow-md ${l.color}`}>
-              {l.label}
-            </a>
-          ))}
+      <div style={card}>
+        <h2 style={{ fontSize: '16px', fontWeight: 700, color: '#0A1A3E', margin: '0 0 16px' }}>Quick Actions</h2>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '10px' }}>
+          <QuickLink href="/dashboard/kyc"     label="🛡 Review KYC"     color="#0E86CA" />
+          <QuickLink href="/dashboard/users"   label="👥 Manage Users"   color="#0A2D6E" />
+          <QuickLink href="/dashboard/rides"   label="🏍 Live Rides"     color="#D97706" />
+          <QuickLink href="/dashboard/reports" label="📊 Revenue Report" color="#16A34A" />
         </div>
       </div>
+
+      {/* Summary row */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+        <div style={{ ...card }}>
+          <h3 style={{ fontSize: '14px', fontWeight: 700, color: '#0A1A3E', margin: '0 0 16px' }}>Platform Summary</h3>
+          {[
+            ['Total Rides', stats?.totalRides?.toLocaleString() || '0', '#0E86CA'],
+            ['Total Errands', stats?.totalErrands?.toLocaleString() || '0', '#7C3AED'],
+            ['Active Rides', stats?.activeRides || 0, '#D97706'],
+            ['Online Riders', stats?.activeRiders || 0, '#16A34A'],
+          ].map(([label, value, color]) => (
+            <div key={label as string} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: '1px solid #EEF4FB' }}>
+              <span style={{ fontSize: '13px', color: '#6B7A8D' }}>{label}</span>
+              <span style={{ fontSize: '15px', fontWeight: 700, color: color as string }}>{value}</span>
+            </div>
+          ))}
+        </div>
+
+        <div style={{ ...card, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', gap: '8px', background: 'linear-gradient(135deg, #F5FAFF, #E3F4FD)' }}>
+          <div style={{ fontSize: '48px' }}>🏍</div>
+          <div style={{ fontSize: '32px', fontWeight: 900, color: '#0E86CA' }}>{stats?.totalUsers || 0}</div>
+          <div style={{ fontSize: '13px', color: '#6B7A8D' }}>Registered Users</div>
+          <div style={{ marginTop: '8px', padding: '4px 14px', borderRadius: '20px', background: '#0E86CA', color: '#fff', fontSize: '12px', fontWeight: 600 }}>
+            {stats?.activeRiders || 0} riders online now
+          </div>
+        </div>
+      </div>
+
     </div>
   );
 }
