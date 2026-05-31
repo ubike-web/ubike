@@ -30,6 +30,15 @@ class _LampScreenState extends State<LampScreen> with TickerProviderStateMixin {
     _lampCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 600));
     _cordCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 800));
     _logoCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 800));
+    // Auto-trigger: no tap needed
+    _autoLight();
+  }
+
+  Future<void> _autoLight() async {
+    // Brief pause so user sees the dark lamp first
+    await Future.delayed(const Duration(milliseconds: 900));
+    if (!mounted) return;
+    await _toggleLamp();
   }
 
   @override

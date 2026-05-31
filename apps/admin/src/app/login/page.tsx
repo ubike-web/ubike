@@ -100,7 +100,6 @@ function LampScreen({ onDone }: { onDone: () => void }) {
 
   useEffect(() => {
     if (!isOn) return;
-    // Animate glow expanding after light turns on
     let size = 0;
     const id = setInterval(() => {
       size = Math.min(size + 4, 100);
@@ -110,7 +109,18 @@ function LampScreen({ onDone }: { onDone: () => void }) {
     return () => clearInterval(id);
   }, [isOn]);
 
+  // Auto-trigger: cord swings after 1s, lamp lights after 1.3s, logo after 1.9s, navigate after 4.9s
+  useEffect(() => {
+    const t1 = setTimeout(() => { setCordY(390); }, 1000);
+    const t2 = setTimeout(() => { setCordY(340); }, 1320);
+    const t3 = setTimeout(() => { setIsOn(true); }, 1350);
+    const t4 = setTimeout(() => { setShowLogo(true); }, 1950);
+    const t5 = setTimeout(() => { onDone(); }, 4950);
+    return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); clearTimeout(t4); clearTimeout(t5); };
+  }, [onDone]);
+
   const handleTap = () => {
+    // Still clickable to skip straight through
     if (isOn) return;
     setCordY(390);
     setTimeout(() => setCordY(340), 320);
