@@ -16,9 +16,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   if (!user) return null;
 
   return (
-    <div className="flex min-h-screen">
+    <div style={{ display: 'flex', minHeight: '100vh', background: '#F5FAFF', fontFamily: 'Poppins, sans-serif' }}>
       <Sidebar />
-      <main className="flex-1 overflow-auto bg-[#F5FAFF] p-6">{children}</main>
+      <main style={{ flex: 1, overflow: 'auto', padding: '24px', minWidth: 0 }}>
+        {children}
+      </main>
     </div>
   );
 }

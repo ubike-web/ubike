@@ -2,130 +2,106 @@
 
 import { useEffect, useState } from 'react';
 import { fetchKyc, approveKyc, rejectKyc } from '@/lib/api';
-import { Loader2, CheckCircle, XCircle, ExternalLink } from 'lucide-react';
+
+const S = {
+  card: { background: '#fff', borderRadius: '16px', border: '1px solid #DDE8F0', boxShadow: '0 2px 8px rgba(14,134,202,0.06)', overflow: 'hidden' } as React.CSSProperties,
+  th: { padding: '12px 16px', textAlign: 'left' as const, fontSize: '12px', fontWeight: 600, color: '#6B7A8D', background: '#F5FAFF', borderBottom: '1px solid #DDE8F0' },
+  td: { padding: '12px 16px', fontSize: '13px', color: '#0A1A3E', borderBottom: '1px solid #EEF4FB' },
+  chip: (active: boolean) => ({ padding: '6px 14px', borderRadius: '20px', border: 'none', cursor: 'pointer', fontSize: '12px', fontWeight: 500, background: active ? '#0E86CA' : '#F0F7FF', color: active ? '#fff' : '#6B7A8D' }),
+};
 
 export default function KycPage() {
   const [items, setItems] = useState<any[]>([]);
-  const [status, setStatus] = useState('pending');
+  const [kycStatus, setKycStatus] = useState('pending');
   const [loading, setLoading] = useState(true);
-  const [actionLoading, setActionLoading] = useState<string | null>(null);
-  const [rejectReason, setRejectReason] = useState('');
+  const [actionId, setActionId] = useState<string | null>(null);
   const [rejectTarget, setRejectTarget] = useState<string | null>(null);
+  const [rejectReason, setRejectReason] = useState('');
 
   const load = () => {
     setLoading(true);
-    fetchKyc(1, status)
-      .then(d => setItems(d.data))
-      .finally(() => setLoading(false));
+    fetchKyc(1, kycStatus).then((d: any) => setItems(d.data || [])).finally(() => setLoading(false));
   };
 
-  useEffect(() => { load(); }, [status]);
+  useEffect(() => { load(); }, [kycStatus]);
 
   const handleApprove = async (userId: string) => {
-    setActionLoading(userId);
-    try { await approveKyc(userId); load(); }
-    finally { setActionLoading(null); }
+    setActionId(userId);
+    try { await approveKyc(userId); load(); } finally { setActionId(null); }
   };
 
   const handleReject = async () => {
     if (!rejectTarget || !rejectReason) return;
-    setActionLoading(rejectTarget);
-    try {
-      await rejectKyc(rejectTarget, rejectReason);
-      setRejectTarget(null);
-      setRejectReason('');
-      load();
-    } finally { setActionLoading(null); }
+    setActionId(rejectTarget);
+    try { await rejectKyc(rejectTarget, rejectReason); setRejectTarget(null); setRejectReason(''); load(); } finally { setActionId(null); }
   };
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-white mb-6">KYC Review</h1>
+      <h1 style={{ fontSize: '22px', fontWeight: 700, color: '#0A1A3E', marginBottom: '20px' }}>KYC Review</h1>
 
-      <div className="flex gap-2 mb-4">
+      <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
         {['pending', 'approved', 'rejected'].map(s => (
-          <button
-            key={s}
-            onClick={() => setStatus(s)}
-            className={`px-3 py-1.5 rounded-lg text-sm font-medium capitalize transition-colors ${status === s ? 'bg-gold-500 text-charcoal-500' : 'bg-charcoal-400 text-gray-300 hover:bg-charcoal-300'}`}
-          >
-            {s}
+          <button key={s} style={S.chip(kycStatus === s)} onClick={() => setKycStatus(s)}>
+            {s.charAt(0).toUpperCase() + s.slice(1)}
           </button>
         ))}
       </div>
 
+      {/* Reject modal */}
       {rejectTarget && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-          <div className="bg-charcoal-400 border border-charcoal-300 rounded-xl p-6 w-full max-w-sm">
-            <h3 className="text-white font-semibold mb-3">Reason for rejection</h3>
-            <textarea
-              value={rejectReason}
-              onChange={e => setRejectReason(e.target.value)}
-              className="w-full bg-charcoal-600 border border-charcoal-300 rounded-lg px-3 py-2 text-white text-sm mb-4 focus:outline-none focus:border-gold-500"
-              rows={3}
-              placeholder="e.g. Documents unclear, expired license..."
-            />
-            <div className="flex gap-2">
-              <button onClick={() => { setRejectTarget(null); setRejectReason(''); }} className="flex-1 bg-charcoal-600 text-gray-300 rounded-lg py-2 text-sm">Cancel</button>
-              <button onClick={handleReject} disabled={!rejectReason} className="flex-1 bg-sienna-500 hover:bg-sienna-400 disabled:opacity-50 text-white rounded-lg py-2 text-sm">Reject</button>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50 }}>
+          <div style={{ background: '#fff', borderRadius: '16px', padding: '24px', width: '380px', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}>
+            <h3 style={{ color: '#0A1A3E', fontWeight: 700, marginBottom: '12px' }}>Reason for rejection</h3>
+            <textarea value={rejectReason} onChange={e => setRejectReason(e.target.value)} rows={3}
+              style={{ width: '100%', borderRadius: '10px', border: '1px solid #DDE8F0', padding: '10px', fontSize: '13px', resize: 'none', outline: 'none', boxSizing: 'border-box' }}
+              placeholder="e.g. Documents unclear, expired license..." />
+            <div style={{ display: 'flex', gap: '10px', marginTop: '16px' }}>
+              <button onClick={() => { setRejectTarget(null); setRejectReason(''); }} style={{ flex: 1, padding: '10px', borderRadius: '10px', border: '1px solid #DDE8F0', background: '#fff', cursor: 'pointer', fontSize: '13px' }}>Cancel</button>
+              <button onClick={handleReject} disabled={!rejectReason} style={{ flex: 1, padding: '10px', borderRadius: '10px', border: 'none', background: '#DC2626', color: '#fff', cursor: 'pointer', fontSize: '13px', fontWeight: 600 }}>Reject</button>
             </div>
           </div>
         </div>
       )}
 
-      <div className="bg-charcoal-400 border border-charcoal-300 rounded-xl overflow-hidden">
+      <div style={S.card}>
         {loading ? (
-          <div className="flex justify-center py-12"><Loader2 className="animate-spin text-gold-500" size={28} /></div>
+          <div style={{ padding: '48px', textAlign: 'center', color: '#0E86CA' }}>Loading...</div>
         ) : items.length === 0 ? (
-          <div className="text-center py-12 text-gray-400">No {status} KYC requests</div>
+          <div style={{ padding: '48px', textAlign: 'center', color: '#6B7A8D' }}>No {kycStatus} KYC requests</div>
         ) : (
-          <table className="w-full text-sm">
-            <thead className="bg-charcoal-600">
-              <tr>
-                {['Rider', 'Plate', 'Submitted', 'Documents', 'Actions'].map(h => (
-                  <th key={h} className="text-left px-4 py-3 text-gray-400 font-medium">{h}</th>
-                ))}
-              </tr>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr>{['Rider', 'Plate', 'Submitted', 'Documents', 'Actions'].map(h => <th key={h} style={S.th}>{h}</th>)}</tr>
             </thead>
             <tbody>
-              {items.map((item, i) => (
-                <tr key={item.id} className={`border-t border-charcoal-300 ${i % 2 === 0 ? '' : 'bg-charcoal-600/30'}`}>
-                  <td className="px-4 py-3 text-white">{(item.users as any)?.full_name || item.user_id}</td>
-                  <td className="px-4 py-3 text-gray-300">{item.plate_number || '—'}</td>
-                  <td className="px-4 py-3 text-gray-400">{new Date(item.submitted_at).toLocaleDateString()}</td>
-                  <td className="px-4 py-3">
-                    <div className="flex gap-2">
-                      {[['License', item.license_url], ['ID', item.national_id_url], ['Vehicle', item.vehicle_photo_url]].map(([label, url]) => (
-                        url && <a key={label as string} href={url as string} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-xs text-gold-400 hover:text-gold-300">
-                          {label} <ExternalLink size={12} />
-                        </a>
-                      ))}
+              {items.map(item => (
+                <tr key={item.id}>
+                  <td style={S.td}>{(item.users as any)?.full_name || item.user_id}</td>
+                  <td style={S.td}>{item.plate_number || '—'}</td>
+                  <td style={{ ...S.td, color: '#6B7A8D' }}>{new Date(item.submitted_at).toLocaleDateString()}</td>
+                  <td style={S.td}>
+                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                      {[['License', item.license_url], ['ID', item.national_id_url], ['Vehicle', item.vehicle_photo_url]].map(([label, url]) =>
+                        url ? <a key={label as string} href={url as string} target="_blank" rel="noopener noreferrer" style={{ color: '#0E86CA', fontSize: '12px' }}>{label} ↗</a> : null
+                      )}
                     </div>
                   </td>
-                  <td className="px-4 py-3">
-                    {status === 'pending' && (
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => handleApprove(item.user_id)}
-                          disabled={actionLoading === item.user_id}
-                          className="p-1.5 rounded-lg text-green-400 hover:bg-green-500/20 transition-colors"
-                          title="Approve"
-                        >
-                          {actionLoading === item.user_id ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle size={16} />}
+                  <td style={S.td}>
+                    {kycStatus === 'pending' ? (
+                      <div style={{ display: 'flex', gap: '6px' }}>
+                        <button onClick={() => handleApprove(item.user_id)} disabled={actionId === item.user_id}
+                          style={{ padding: '5px 12px', borderRadius: '8px', border: 'none', background: '#E8F5E9', color: '#2E7D32', cursor: 'pointer', fontSize: '12px', fontWeight: 600 }}>
+                          {actionId === item.user_id ? '...' : '✓ Approve'}
                         </button>
-                        <button
-                          onClick={() => setRejectTarget(item.user_id)}
-                          disabled={actionLoading === item.user_id}
-                          className="p-1.5 rounded-lg text-sienna-400 hover:bg-sienna-500/20 transition-colors"
-                          title="Reject"
-                        >
-                          <XCircle size={16} />
+                        <button onClick={() => setRejectTarget(item.user_id)}
+                          style={{ padding: '5px 12px', borderRadius: '8px', border: 'none', background: '#FEF2F2', color: '#DC2626', cursor: 'pointer', fontSize: '12px', fontWeight: 600 }}>
+                          ✗ Reject
                         </button>
                       </div>
-                    )}
-                    {status !== 'pending' && (
-                      <span className={`text-xs px-2 py-0.5 rounded-full ${status === 'approved' ? 'bg-green-500/20 text-green-400' : 'bg-sienna-500/20 text-sienna-400'}`}>
-                        {status}
+                    ) : (
+                      <span style={{ background: kycStatus === 'approved' ? '#E8F5E9' : '#FEF2F2', color: kycStatus === 'approved' ? '#2E7D32' : '#DC2626', padding: '2px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: 600 }}>
+                        {kycStatus}
                       </span>
                     )}
                   </td>

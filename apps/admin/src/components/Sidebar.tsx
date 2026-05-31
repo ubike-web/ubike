@@ -2,19 +2,17 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Users, Bike, Package, CreditCard, ShieldCheck, BarChart3, LogOut } from 'lucide-react';
 import { useAuthStore } from '@/lib/auth-store';
 import { useRouter } from 'next/navigation';
-import clsx from 'clsx';
 
 const nav = [
-  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/dashboard/users', label: 'Users', icon: Users },
-  { href: '/dashboard/rides', label: 'Rides', icon: Bike },
-  { href: '/dashboard/errands', label: 'Errands', icon: Package },
-  { href: '/dashboard/payments', label: 'Payments', icon: CreditCard },
-  { href: '/dashboard/kyc', label: 'KYC Review', icon: ShieldCheck },
-  { href: '/dashboard/reports', label: 'Reports', icon: BarChart3 },
+  { href: '/dashboard',          label: 'Dashboard',   icon: '⊞' },
+  { href: '/dashboard/users',    label: 'Users',        icon: '👥' },
+  { href: '/dashboard/rides',    label: 'Rides',        icon: '🏍' },
+  { href: '/dashboard/errands',  label: 'Errands',      icon: '📦' },
+  { href: '/dashboard/payments', label: 'Payments',     icon: '💳' },
+  { href: '/dashboard/kyc',      label: 'KYC Review',   icon: '🛡' },
+  { href: '/dashboard/reports',  label: 'Reports',      icon: '📊' },
 ];
 
 export function Sidebar() {
@@ -22,54 +20,71 @@ export function Sidebar() {
   const logout = useAuthStore(s => s.logout);
   const router = useRouter();
 
-  const handleLogout = () => {
-    logout();
-    router.push('/login');
-  };
+  const handleLogout = () => { logout(); router.push('/login'); };
 
   return (
-    <aside className="w-64 min-h-screen bg-white border-r border-[#DDE8F0] flex flex-col shadow-sm">
+    <aside style={{
+      width: '220px',
+      minHeight: '100vh',
+      background: '#FFFFFF',
+      borderRight: '1px solid #DDE8F0',
+      display: 'flex',
+      flexDirection: 'column',
+      flexShrink: 0,
+      boxShadow: '2px 0 8px rgba(14,134,202,0.06)',
+    }}>
       {/* Logo */}
-      <div className="px-5 py-5 border-b border-[#DDE8F0]">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 ocean-gradient rounded-xl flex items-center justify-center">
-            <svg viewBox="0 0 32 32" className="w-5 h-5">
-              <path d="M8 22L12 10L20 10L24 22" stroke="white" strokeWidth="2" strokeLinecap="round" fill="none"/>
-              <circle cx="6" cy="24" r="4" stroke="white" strokeWidth="1.5" fill="none"/>
-              <circle cx="26" cy="24" r="4" stroke="white" strokeWidth="1.5" fill="none"/>
-            </svg>
-          </div>
-          <div>
-            <span className="text-[#0A2D6E] font-black text-lg leading-none">U-BIKE</span>
-            <p className="text-[#6B7A8D] text-[10px] font-medium">Admin Portal</p>
-          </div>
+      <div style={{ padding: '20px 16px 16px', borderBottom: '1px solid #DDE8F0', display: 'flex', alignItems: 'center', gap: '10px' }}>
+        <div style={{
+          width: '36px', height: '36px', borderRadius: '10px', flexShrink: 0,
+          background: 'linear-gradient(135deg, #0A2D6E, #0E86CA)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}>
+          <svg viewBox="0 0 32 26" width="20" height="16">
+            <path d="M4 20L8 4L24 4L28 20" stroke="white" strokeWidth="2.5" strokeLinecap="round" fill="none"/>
+            <circle cx="3" cy="22" r="3" stroke="white" strokeWidth="1.5" fill="none"/>
+            <circle cx="29" cy="22" r="3" stroke="white" strokeWidth="1.5" fill="none"/>
+          </svg>
+        </div>
+        <div>
+          <div style={{ color: '#0A2D6E', fontWeight: 900, fontSize: '16px', letterSpacing: '2px', lineHeight: 1 }}>U-BIKE</div>
+          <div style={{ color: '#0E86CA', fontSize: '9px', letterSpacing: '2px', marginTop: '2px' }}>ADMIN</div>
         </div>
       </div>
 
-      <nav className="flex-1 py-4 px-3">
-        {nav.map(({ href, label, icon: Icon }) => (
-          <Link
-            key={href}
-            href={href}
-            className={clsx(
-              'flex items-center gap-3 px-3 py-2.5 rounded-xl mb-1 text-sm font-medium transition-all',
-              pathname === href || pathname.startsWith(href + '/')
-                ? 'bg-[#E3F4FD] text-[#0E86CA] border border-[#0E86CA]/20 shadow-sm'
-                : 'text-[#6B7A8D] hover:bg-[#F5FAFF] hover:text-[#0E86CA]',
-            )}
-          >
-            <Icon size={17} />
-            {label}
-          </Link>
-        ))}
+      {/* Nav */}
+      <nav style={{ flex: 1, padding: '12px 10px' }}>
+        {nav.map(({ href, label, icon }) => {
+          const active = pathname === href || (pathname.startsWith(href + '/') && href !== '/dashboard');
+          return (
+            <Link key={href} href={href} style={{
+              display: 'flex', alignItems: 'center', gap: '10px',
+              padding: '10px 12px', borderRadius: '10px', marginBottom: '3px',
+              textDecoration: 'none', fontSize: '13px', fontWeight: active ? 600 : 400,
+              background: active ? '#E3F4FD' : 'transparent',
+              color: active ? '#0E86CA' : '#6B7A8D',
+              border: active ? '1px solid rgba(14,134,202,0.2)' : '1px solid transparent',
+              transition: 'all 0.15s ease',
+            }}>
+              <span style={{ fontSize: '16px', width: '20px', textAlign: 'center' }}>{icon}</span>
+              {label}
+            </Link>
+          );
+        })}
       </nav>
 
-      <div className="px-3 py-4 border-t border-[#DDE8F0]">
-        <button
-          onClick={handleLogout}
-          className="flex items-center gap-3 px-3 py-2.5 rounded-xl w-full text-sm text-[#6B7A8D] hover:bg-red-50 hover:text-red-600 transition-colors"
+      {/* Sign out */}
+      <div style={{ padding: '12px 10px', borderTop: '1px solid #DDE8F0' }}>
+        <button onClick={handleLogout} style={{
+          width: '100%', display: 'flex', alignItems: 'center', gap: '10px',
+          padding: '10px 12px', borderRadius: '10px', border: 'none', cursor: 'pointer',
+          background: 'transparent', color: '#6B7A8D', fontSize: '13px',
+          transition: 'all 0.15s ease',
+        }}
+          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = '#FEF2F2'; (e.currentTarget as HTMLElement).style.color = '#DC2626'; }}
+          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; (e.currentTarget as HTMLElement).style.color = '#6B7A8D'; }}
         >
-          <LogOut size={17} />
+          <span style={{ fontSize: '16px' }}>🚪</span>
           Sign out
         </button>
       </div>

@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react';
 import { fetchRevenue } from '@/lib/api';
-import { Loader2 } from 'lucide-react';
 
 export default function ReportsPage() {
   const [revenue, setRevenue] = useState<any>(null);
@@ -12,62 +11,71 @@ export default function ReportsPage() {
 
   const load = () => {
     setLoading(true);
-    fetchRevenue(from || undefined, to || undefined)
-      .then(setRevenue)
-      .finally(() => setLoading(false));
+    fetchRevenue(from || undefined, to || undefined).then(setRevenue).finally(() => setLoading(false));
   };
 
   useEffect(() => { load(); }, []);
 
   const LABELS: Record<string, string> = {
-    ride_payment: 'Ride Payments',
-    errand_payment: 'Errand Payments',
-    wallet_topup: 'Wallet Top-ups',
-    refund: 'Refunds',
+    ride_payment: 'Ride Payments', errand_payment: 'Errand Payments',
+    wallet_topup: 'Wallet Top-ups', refund: 'Refunds',
+  };
+
+  const inputStyle: React.CSSProperties = {
+    padding: '8px 12px', borderRadius: '10px', border: '1px solid #DDE8F0',
+    fontSize: '13px', outline: 'none', color: '#0A1A3E', background: '#F5FAFF',
   };
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-white mb-6">Revenue Report</h1>
+      <h1 style={{ fontSize: '22px', fontWeight: 700, color: '#0A1A3E', marginBottom: '20px' }}>Revenue Report</h1>
 
-      <div className="flex gap-3 mb-6 items-end">
+      {/* Filters */}
+      <div style={{ display: 'flex', gap: '12px', marginBottom: '24px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
         <div>
-          <label className="block text-xs text-gray-400 mb-1">From</label>
-          <input type="date" value={from} onChange={e => setFrom(e.target.value)} className="bg-charcoal-400 border border-charcoal-300 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-gold-500" />
+          <div style={{ fontSize: '11px', color: '#6B7A8D', marginBottom: '4px' }}>From</div>
+          <input type="date" value={from} onChange={e => setFrom(e.target.value)} style={inputStyle} />
         </div>
         <div>
-          <label className="block text-xs text-gray-400 mb-1">To</label>
-          <input type="date" value={to} onChange={e => setTo(e.target.value)} className="bg-charcoal-400 border border-charcoal-300 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-gold-500" />
+          <div style={{ fontSize: '11px', color: '#6B7A8D', marginBottom: '4px' }}>To</div>
+          <input type="date" value={to} onChange={e => setTo(e.target.value)} style={inputStyle} />
         </div>
-        <button onClick={load} className="bg-gold-500 hover:bg-gold-400 text-charcoal-500 font-semibold px-4 py-2 rounded-lg text-sm">Apply</button>
+        <button onClick={load} style={{ padding: '8px 20px', borderRadius: '10px', border: 'none', background: '#0E86CA', color: '#fff', cursor: 'pointer', fontWeight: 600, fontSize: '13px' }}>
+          Apply
+        </button>
       </div>
 
       {loading ? (
-        <div className="flex justify-center py-12"><Loader2 className="animate-spin text-gold-500" size={28} /></div>
+        <div style={{ textAlign: 'center', padding: '48px', color: '#0E86CA' }}>Loading...</div>
       ) : revenue && (
-        <div className="space-y-4">
-          <div className="bg-charcoal-400 border border-charcoal-300 rounded-xl p-6">
-            <div className="text-gray-400 text-sm mb-1">Total Revenue</div>
-            <div className="text-3xl font-bold text-gold-400">KES {revenue.total?.toLocaleString()}</div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          {/* Total */}
+          <div style={{ background: 'linear-gradient(135deg, #0A2D6E, #0E86CA)', borderRadius: '16px', padding: '24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div>
+              <div style={{ color: 'rgba(255,255,255,0.75)', fontSize: '13px', marginBottom: '4px' }}>Total Revenue</div>
+              <div style={{ color: '#fff', fontSize: '36px', fontWeight: 800 }}>KES {revenue.total?.toLocaleString()}</div>
+            </div>
+            <div style={{ fontSize: '48px' }}>💰</div>
           </div>
 
-          <div className="bg-charcoal-400 border border-charcoal-300 rounded-xl p-5">
-            <h2 className="text-white font-semibold mb-4">Breakdown</h2>
-            <div className="space-y-3">
-              {Object.entries(revenue.breakdown || {}).map(([type, amount]) => (
-                <div key={type} className="flex items-center justify-between">
-                  <span className="text-gray-300 text-sm">{LABELS[type] || type}</span>
-                  <div className="flex items-center gap-4">
-                    <div className="w-32 h-2 bg-charcoal-600 rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-gold-500 rounded-full"
-                        style={{ width: `${Math.min(100, ((amount as number) / (revenue.total || 1)) * 100)}%` }}
-                      />
+          {/* Breakdown */}
+          <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid #DDE8F0', padding: '24px', boxShadow: '0 2px 8px rgba(14,134,202,0.06)' }}>
+            <h2 style={{ color: '#0A1A3E', fontWeight: 700, marginBottom: '16px', fontSize: '16px' }}>Breakdown</h2>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {Object.entries(revenue.breakdown || {}).map(([type, amount]) => {
+                const pct = Math.min(100, ((amount as number) / (revenue.total || 1)) * 100);
+                return (
+                  <div key={type} style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div style={{ width: '140px', fontSize: '13px', color: '#6B7A8D', flexShrink: 0 }}>{LABELS[type] || type}</div>
+                    <div style={{ flex: 1, height: '8px', background: '#EEF4FB', borderRadius: '4px', overflow: 'hidden' }}>
+                      <div style={{ width: `${pct}%`, height: '100%', background: '#0E86CA', borderRadius: '4px', transition: 'width 0.6s ease' }} />
                     </div>
-                    <span className="text-gold-400 font-medium text-sm w-24 text-right">KES {(amount as number).toLocaleString()}</span>
+                    <div style={{ width: '120px', textAlign: 'right', fontSize: '13px', fontWeight: 600, color: '#0E86CA' }}>
+                      KES {(amount as number).toLocaleString()}
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         </div>

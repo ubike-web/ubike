@@ -2,15 +2,22 @@
 
 import { useEffect, useState } from 'react';
 import { fetchRides } from '@/lib/api';
-import { Loader2 } from 'lucide-react';
 
-const STATUS_COLORS: Record<string, string> = {
-  requested: 'bg-yellow-500/20 text-yellow-400',
-  accepted: 'bg-blue-500/20 text-blue-400',
-  rider_arrived: 'bg-purple-500/20 text-purple-400',
-  in_progress: 'bg-green-500/20 text-green-400',
-  completed: 'bg-gray-500/20 text-gray-400',
-  cancelled: 'bg-sienna-500/20 text-sienna-400',
+const S = {
+  card: { background: '#fff', borderRadius: '16px', border: '1px solid #DDE8F0', boxShadow: '0 2px 8px rgba(14,134,202,0.06)', overflow: 'hidden' } as React.CSSProperties,
+  th: { padding: '12px 16px', textAlign: 'left' as const, fontSize: '12px', fontWeight: 600, color: '#6B7A8D', background: '#F5FAFF', borderBottom: '1px solid #DDE8F0' },
+  td: { padding: '12px 16px', fontSize: '13px', color: '#0A1A3E', borderBottom: '1px solid #EEF4FB' },
+  chip: (active: boolean) => ({ padding: '6px 14px', borderRadius: '20px', border: 'none', cursor: 'pointer', fontSize: '12px', fontWeight: 500, background: active ? '#0E86CA' : '#F0F7FF', color: active ? '#fff' : '#6B7A8D' }),
+};
+
+const STATUS_COLORS: Record<string, { bg: string; color: string }> = {
+  requested:      { bg: '#FFF9E6', color: '#D97706' },
+  accepted:       { bg: '#EFF6FF', color: '#2563EB' },
+  rider_arrived:  { bg: '#F5F3FF', color: '#7C3AED' },
+  in_progress:    { bg: '#ECFDF5', color: '#059669' },
+  completed:      { bg: '#F0FDF4', color: '#16A34A' },
+  cancelled:      { bg: '#FEF2F2', color: '#DC2626' },
+  fare_negotiation: { bg: '#FFF7ED', color: '#EA580C' },
 };
 
 export default function RidesPage() {
@@ -23,7 +30,7 @@ export default function RidesPage() {
   useEffect(() => {
     setLoading(true);
     fetchRides(page, 20, status || undefined)
-      .then(d => { setRides(d.data); setTotal(d.meta?.total || 0); })
+      .then((d: any) => { setRides(d.data || []); setTotal(d.meta?.total || 0); })
       .finally(() => setLoading(false));
   }, [page, status]);
 
@@ -32,58 +39,49 @@ export default function RidesPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-white mb-6">Rides</h1>
+      <h1 style={{ fontSize: '22px', fontWeight: 700, color: '#0A1A3E', marginBottom: '20px' }}>Rides</h1>
 
-      <div className="flex flex-wrap gap-2 mb-4">
+      <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', flexWrap: 'wrap' }}>
         {statuses.map(s => (
-          <button
-            key={s}
-            onClick={() => { setStatus(s); setPage(1); }}
-            className={`px-3 py-1.5 rounded-lg text-sm font-medium capitalize transition-colors ${status === s ? 'bg-gold-500 text-charcoal-500' : 'bg-charcoal-400 text-gray-300 hover:bg-charcoal-300'}`}
-          >
+          <button key={s} style={S.chip(status === s)} onClick={() => { setStatus(s); setPage(1); }}>
             {s || 'All'}
           </button>
         ))}
       </div>
 
-      <div className="bg-charcoal-400 border border-charcoal-300 rounded-xl overflow-hidden">
+      <div style={S.card}>
         {loading ? (
-          <div className="flex justify-center py-12"><Loader2 className="animate-spin text-gold-500" size={28} /></div>
+          <div style={{ padding: '48px', textAlign: 'center', color: '#0E86CA' }}>Loading...</div>
         ) : (
-          <table className="w-full text-sm">
-            <thead className="bg-charcoal-600">
-              <tr>
-                {['Pickup', 'Dropoff', 'Distance', 'Fare', 'Status', 'Type', 'Created'].map(h => (
-                  <th key={h} className="text-left px-4 py-3 text-gray-400 font-medium">{h}</th>
-                ))}
-              </tr>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr>{['Pickup', 'Dropoff', 'Distance', 'Fare', 'Status', 'Vehicle', 'Date'].map(h => <th key={h} style={S.th}>{h}</th>)}</tr>
             </thead>
             <tbody>
-              {rides.map((r, i) => (
-                <tr key={r.id} className={`border-t border-charcoal-300 ${i % 2 === 0 ? '' : 'bg-charcoal-600/30'}`}>
-                  <td className="px-4 py-3 text-white max-w-[180px] truncate">{r.pickup_address}</td>
-                  <td className="px-4 py-3 text-gray-300 max-w-[180px] truncate">{r.dropoff_address}</td>
-                  <td className="px-4 py-3 text-gray-300">{r.distance_km}km</td>
-                  <td className="px-4 py-3 text-gold-400">KES {r.fare_final || r.fare_estimate}</td>
-                  <td className="px-4 py-3">
-                    <span className={`text-xs px-2 py-0.5 rounded-full ${STATUS_COLORS[r.status] || 'bg-gray-500/20 text-gray-400'}`}>
-                      {r.status}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-gray-400 capitalize">{r.vehicle_type}</td>
-                  <td className="px-4 py-3 text-gray-400">{new Date(r.created_at).toLocaleDateString()}</td>
-                </tr>
-              ))}
+              {rides.map(r => {
+                const sc = STATUS_COLORS[r.status] || { bg: '#F5FAFF', color: '#6B7A8D' };
+                return (
+                  <tr key={r.id}>
+                    <td style={{ ...S.td, maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.pickup_address}</td>
+                    <td style={{ ...S.td, maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: '#6B7A8D' }}>{r.dropoff_address}</td>
+                    <td style={S.td}>{r.distance_km}km</td>
+                    <td style={{ ...S.td, color: '#0E86CA', fontWeight: 600 }}>KES {r.fare_final || r.fare_estimate}</td>
+                    <td style={S.td}><span style={{ background: sc.bg, color: sc.color, padding: '2px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: 600 }}>{r.status}</span></td>
+                    <td style={{ ...S.td, color: '#6B7A8D', textTransform: 'capitalize' }}>{r.vehicle_type}</td>
+                    <td style={{ ...S.td, color: '#6B7A8D' }}>{new Date(r.created_at).toLocaleDateString()}</td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         )}
       </div>
 
       {totalPages > 1 && (
-        <div className="flex gap-2 mt-4 justify-end">
-          <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} className="px-3 py-1.5 bg-charcoal-400 text-gray-300 rounded-lg text-sm disabled:opacity-50">Previous</button>
-          <span className="px-3 py-1.5 text-gray-400 text-sm">{page} / {totalPages}</span>
-          <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages} className="px-3 py-1.5 bg-charcoal-400 text-gray-300 rounded-lg text-sm disabled:opacity-50">Next</button>
+        <div style={{ display: 'flex', gap: '8px', marginTop: '16px', justifyContent: 'flex-end', alignItems: 'center' }}>
+          <button style={S.chip(false)} onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}>← Prev</button>
+          <span style={{ fontSize: '13px', color: '#6B7A8D' }}>{page} / {totalPages}</span>
+          <button style={S.chip(false)} onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}>Next →</button>
         </div>
       )}
     </div>

@@ -2,7 +2,15 @@
 
 import { useEffect, useState } from 'react';
 import { fetchUsers, suspendUser, activateUser } from '@/lib/api';
-import { Loader2, UserX, UserCheck } from 'lucide-react';
+
+const S = {
+  card: { background: '#fff', borderRadius: '16px', border: '1px solid #DDE8F0', boxShadow: '0 2px 8px rgba(14,134,202,0.06)', overflow: 'hidden' } as React.CSSProperties,
+  th: { padding: '12px 16px', textAlign: 'left' as const, fontSize: '12px', fontWeight: 600, color: '#6B7A8D', background: '#F5FAFF', borderBottom: '1px solid #DDE8F0' },
+  td: { padding: '12px 16px', fontSize: '13px', color: '#0A1A3E', borderBottom: '1px solid #EEF4FB' },
+  badge: (color: string) => ({ display: 'inline-block', padding: '2px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: 600, background: color === 'green' ? '#E8F5E9' : '#FEECEC', color: color === 'green' ? '#2E7D32' : '#DC2626' }),
+  chip: (active: boolean) => ({ padding: '6px 14px', borderRadius: '20px', border: 'none', cursor: 'pointer', fontSize: '12px', fontWeight: 500, background: active ? '#0E86CA' : '#F0F7FF', color: active ? '#fff' : '#6B7A8D', transition: 'all 0.15s' }),
+  btn: (danger?: boolean) => ({ padding: '5px 10px', borderRadius: '8px', border: 'none', cursor: 'pointer', fontSize: '12px', fontWeight: 600, background: danger ? '#FEF2F2' : '#E8F5E9', color: danger ? '#DC2626' : '#2E7D32' }),
+};
 
 export default function UsersPage() {
   const [users, setUsers] = useState<any[]>([]);
@@ -10,80 +18,61 @@ export default function UsersPage() {
   const [page, setPage] = useState(1);
   const [role, setRole] = useState('');
   const [loading, setLoading] = useState(true);
-  const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [actionId, setActionId] = useState<string | null>(null);
 
   const load = () => {
     setLoading(true);
     fetchUsers(page, 20, role || undefined)
-      .then(d => { setUsers(d.data); setTotal(d.meta?.total || 0); })
+      .then((d: any) => { setUsers(d.data || []); setTotal(d.meta?.total || 0); })
       .finally(() => setLoading(false));
   };
 
   useEffect(() => { load(); }, [page, role]);
 
-  const handleSuspend = async (id: string, active: boolean) => {
-    setActionLoading(id);
-    try {
-      if (active) await suspendUser(id);
-      else await activateUser(id);
-      load();
-    } finally {
-      setActionLoading(null);
-    }
+  const handleToggle = async (id: string, active: boolean) => {
+    setActionId(id);
+    try { active ? await suspendUser(id) : await activateUser(id); load(); }
+    finally { setActionId(null); }
   };
 
+  const roles = ['', 'customer', 'passenger_rider', 'errands_rider', 'admin'];
   const totalPages = Math.ceil(total / 20);
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-white mb-6">Users</h1>
+      <h1 style={{ fontSize: '22px', fontWeight: 700, color: '#0A1A3E', marginBottom: '20px' }}>Users</h1>
 
-      <div className="flex gap-3 mb-4">
-        {['', 'customer', 'passenger_rider', 'errands_rider', 'admin'].map(r => (
-          <button
-            key={r}
-            onClick={() => { setRole(r); setPage(1); }}
-            className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${role === r ? 'bg-gold-500 text-charcoal-500' : 'bg-charcoal-400 text-gray-300 hover:bg-charcoal-300'}`}
-          >
+      <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', flexWrap: 'wrap' }}>
+        {roles.map(r => (
+          <button key={r} style={S.chip(role === r)} onClick={() => { setRole(r); setPage(1); }}>
             {r || 'All'}
           </button>
         ))}
       </div>
 
-      <div className="bg-charcoal-400 border border-charcoal-300 rounded-xl overflow-hidden">
+      <div style={S.card}>
         {loading ? (
-          <div className="flex justify-center py-12"><Loader2 className="animate-spin text-gold-500" size={28} /></div>
+          <div style={{ padding: '48px', textAlign: 'center', color: '#0E86CA' }}>Loading...</div>
         ) : (
-          <table className="w-full text-sm">
-            <thead className="bg-charcoal-600">
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
               <tr>
-                {['Name', 'Contact', 'Role', 'Status', 'Joined', 'Actions'].map(h => (
-                  <th key={h} className="text-left px-4 py-3 text-gray-400 font-medium">{h}</th>
+                {['Name', 'Contact', 'Role', 'Status', 'Joined', 'Action'].map(h => (
+                  <th key={h} style={S.th}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
-              {users.map((u, i) => (
-                <tr key={u.id} className={`border-t border-charcoal-300 ${i % 2 === 0 ? '' : 'bg-charcoal-600/30'}`}>
-                  <td className="px-4 py-3 text-white font-medium">{u.full_name || '—'}</td>
-                  <td className="px-4 py-3 text-gray-300">{u.email || u.phone}</td>
-                  <td className="px-4 py-3">
-                    <span className="bg-gold-500/20 text-gold-400 text-xs px-2 py-0.5 rounded-full">{u.role}</span>
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className={`text-xs px-2 py-0.5 rounded-full ${u.is_active ? 'bg-green-500/20 text-green-400' : 'bg-sienna-500/20 text-sienna-400'}`}>
-                      {u.is_active ? 'Active' : 'Suspended'}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-gray-400">{new Date(u.created_at).toLocaleDateString()}</td>
-                  <td className="px-4 py-3">
-                    <button
-                      onClick={() => handleSuspend(u.id, u.is_active)}
-                      disabled={actionLoading === u.id}
-                      className={`p-1.5 rounded-lg transition-colors ${u.is_active ? 'text-sienna-400 hover:bg-sienna-500/20' : 'text-green-400 hover:bg-green-500/20'}`}
-                      title={u.is_active ? 'Suspend' : 'Activate'}
-                    >
-                      {actionLoading === u.id ? <Loader2 size={16} className="animate-spin" /> : u.is_active ? <UserX size={16} /> : <UserCheck size={16} />}
+              {users.map(u => (
+                <tr key={u.id}>
+                  <td style={S.td}><strong>{u.full_name || '—'}</strong></td>
+                  <td style={S.td}>{u.email || u.phone}</td>
+                  <td style={S.td}><span style={{ background: '#E3F4FD', color: '#0E86CA', padding: '2px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: 600 }}>{u.role}</span></td>
+                  <td style={S.td}><span style={S.badge(u.is_active ? 'green' : 'red')}>{u.is_active ? 'Active' : 'Suspended'}</span></td>
+                  <td style={{ ...S.td, color: '#6B7A8D' }}>{new Date(u.created_at).toLocaleDateString()}</td>
+                  <td style={S.td}>
+                    <button style={S.btn(u.is_active)} onClick={() => handleToggle(u.id, u.is_active)} disabled={actionId === u.id}>
+                      {actionId === u.id ? '...' : u.is_active ? 'Suspend' : 'Activate'}
                     </button>
                   </td>
                 </tr>
@@ -94,14 +83,10 @@ export default function UsersPage() {
       </div>
 
       {totalPages > 1 && (
-        <div className="flex gap-2 mt-4 justify-end">
-          <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} className="px-3 py-1.5 bg-charcoal-400 text-gray-300 rounded-lg text-sm disabled:opacity-50">
-            Previous
-          </button>
-          <span className="px-3 py-1.5 text-gray-400 text-sm">{page} / {totalPages}</span>
-          <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages} className="px-3 py-1.5 bg-charcoal-400 text-gray-300 rounded-lg text-sm disabled:opacity-50">
-            Next
-          </button>
+        <div style={{ display: 'flex', gap: '8px', marginTop: '16px', justifyContent: 'flex-end', alignItems: 'center' }}>
+          <button style={S.chip(false)} onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}>← Prev</button>
+          <span style={{ fontSize: '13px', color: '#6B7A8D' }}>{page} / {totalPages}</span>
+          <button style={S.chip(false)} onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}>Next →</button>
         </div>
       )}
     </div>
