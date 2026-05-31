@@ -13,6 +13,7 @@ import errandRoutes from '../presentation/routes/errand.routes';
 import riderRoutes from '../presentation/routes/rider.routes';
 import paymentRoutes from '../presentation/routes/payment.routes';
 import adminRoutes from '../presentation/routes/admin.routes';
+import uploadRoutes from '../presentation/routes/upload.routes';
 import { errorHandler, notFoundHandler } from '../presentation/middlewares/error.middleware';
 
 export function createApp() {
@@ -63,6 +64,7 @@ export function createApp() {
   app.use(`${prefix}/riders`, riderRoutes);
   app.use(`${prefix}/payments`, paymentRoutes);
   app.use(`${prefix}/admin`, adminRoutes);
+  app.use(`${prefix}/uploads`, uploadRoutes);
 
   // 404 + error handling
   app.use(notFoundHandler);
