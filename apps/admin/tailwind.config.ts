@@ -5,9 +5,10 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
+        // ── Ocean Blue (primary brand) ─────────────────────────────────
         ocean: {
           DEFAULT: '#0E86CA',
-          50: '#E3F4FD',
+          50:  '#E3F4FD',
           100: '#B8E2F8',
           200: '#7DCBF1',
           300: '#42C8F5',
@@ -20,18 +21,36 @@ const config: Config = {
         },
         leaf: {
           DEFAULT: '#4CAF50',
-          50: '#E8F5E9',
-          100: '#C8E6C9',
-          200: '#A5D6A7',
-          300: '#81C784',
-          400: '#66BB6A',
           500: '#4CAF50',
           600: '#388E3C',
           700: '#2E7D32',
         },
-        // Keep for legacy references
-        charcoal: { DEFAULT: '#0A2D6E', 500: '#0A2D6E', 400: '#0E86CA', 300: '#1A7BB5', 600: '#071E4A', dark: '#040F26' },
-        gold: { DEFAULT: '#0E86CA', 500: '#0E86CA', 400: '#1A9EDF' },
+
+        // ── Legacy class names used across dashboard pages ─────────────
+        // These map to the ocean blue palette so old class names still work
+        charcoal: {
+          DEFAULT: '#0A1220',
+          300: '#1A3A5C',
+          400: '#0D2550',
+          500: '#0A1A3E',
+          600: '#07122A',
+          700: '#040D1E',
+          800: '#030810',
+          900: '#020510',
+          dark: '#040F26',
+        },
+        gold: {
+          DEFAULT: '#42C8F5',
+          300: '#7DCBF1',
+          400: '#42C8F5',
+          500: '#0E86CA',
+          600: '#0A6DAA',
+        },
+        sienna: {
+          300: '#F87171',
+          400: '#EF4444',
+          500: '#DC2626',
+        },
       },
       fontFamily: {
         sans: ['Poppins', 'sans-serif'],
