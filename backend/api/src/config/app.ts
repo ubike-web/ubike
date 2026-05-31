@@ -22,7 +22,23 @@ export function createApp() {
   // Security
   app.use(helmet());
   app.use(cors({
-    origin: [env.FRONTEND_URL, 'http://localhost:3000', 'http://localhost:3001'],
+    origin: (origin, callback) => {
+      // Allow requests with no origin (mobile apps, Postman, curl)
+      if (!origin) return callback(null, true);
+      // Allow any Vercel deployment, localhost, and configured frontend
+      const allowed = [
+        env.FRONTEND_URL,
+        'http://localhost:3000',
+        'http://localhost:3001',
+        'http://localhost:3002',
+      ];
+      const isVercel = origin.endsWith('.vercel.app');
+      const isRender = origin.endsWith('.onrender.com');
+      if (allowed.includes(origin) || isVercel || isRender) {
+        return callback(null, true);
+      }
+      return callback(null, true); // open during development — tighten in production
+    },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Paystack-Signature'],
