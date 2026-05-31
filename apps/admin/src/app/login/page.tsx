@@ -117,8 +117,8 @@ function LampScreen({ onDone }: { onDone: () => void }) {
       style={{
         height: '100vh', cursor: 'pointer',
         background: isOn
-          ? 'radial-gradient(ellipse at 50% 20%, rgba(66,200,245,0.25) 0%, #0A1A2E 55%, #040F26 100%)'
-          : '#0D1B2A',
+          ? 'radial-gradient(ellipse at 50% 25%, rgba(255,220,100,0.22) 0%, #1a1a1a 55%, #0d0d0d 100%)'
+          : '#121921',
         display: 'flex', flexDirection: 'column', alignItems: 'center',
         justifyContent: 'flex-start', transition: 'background 0.8s ease',
         position: 'relative', overflow: 'hidden',
@@ -131,8 +131,8 @@ function LampScreen({ onDone }: { onDone: () => void }) {
           to   { opacity: 1; transform: translateY(0); }
         }
         @keyframes glow-pulse {
-          0%, 100% { filter: drop-shadow(0 0 12px rgba(66,200,245,0.6)); }
-          50%       { filter: drop-shadow(0 0 28px rgba(66,200,245,1)); }
+          0%, 100% { filter: drop-shadow(0 0 12px rgba(255,220,80,0.5)); }
+          50%       { filter: drop-shadow(0 0 32px rgba(255,220,80,0.9)); }
         }
         @keyframes tap-hint {
           0%, 100% { opacity: 0.3; transform: translateY(0); }
@@ -146,7 +146,7 @@ function LampScreen({ onDone }: { onDone: () => void }) {
           position: 'absolute', top: '200px', left: '50%',
           transform: 'translateX(-50%)',
           width: '600px', height: '500px',
-          background: 'conic-gradient(from 250deg at 50% 0%, transparent 0deg, rgba(66,200,245,0.18) 30deg, transparent 60deg)',
+          background: 'conic-gradient(from 250deg at 50% 0%, transparent 0deg, rgba(255,220,80,0.15) 30deg, transparent 60deg)',
           pointerEvents: 'none',
           animation: 'glow-pulse 2s ease-in-out infinite',
         }} />
@@ -156,66 +156,79 @@ function LampScreen({ onDone }: { onDone: () => void }) {
       <svg
         viewBox="0 0 333 484"
         style={{ width: '200px', marginTop: '40px', overflow: 'visible', transition: 'filter 0.6s ease',
-          filter: isOn ? 'drop-shadow(0 0 20px rgba(66,200,245,0.8))' : 'none' }}
+          filter: isOn ? 'drop-shadow(0 0 24px rgba(255,220,80,0.7))' : 'none' }}
       >
         {/* Lamp shade */}
         <path
           d="M164.859 0c55.229 0 100 8.954 100 20l29.859 199.06C291.529 208.451 234.609 200 164.859 200S38.189 208.451 35 219.06L64.859 20c0-11.046 44.772-20 100-20z"
-          fill={isOn ? '#1A6FA8' : '#0A2D6E'}
+          fill={isOn ? '#888' : '#444'}
           style={{ transition: 'fill 0.6s ease' }}
         />
-        {/* Shade opening glow */}
+        {/* Shade opening — warm yellow glow when on */}
         <ellipse cx="165" cy="220" rx="130" ry="20"
-          fill={isOn ? 'rgba(66,200,245,0.8)' : '#0A1A3E'}
+          fill={isOn ? 'hsl(50, 90%, 85%)' : '#1a1a1a'}
           style={{ transition: 'fill 0.6s ease' }}
+        />
+        {/* Shade opening shade overlay */}
+        <ellipse cx="165" cy="220" rx="130" ry="20"
+          fill="url(#opening-shade)"
+          opacity={isOn ? 0 : 1}
+          style={{ transition: 'opacity 0.6s ease' }}
         />
         {/* Post */}
         <path d="M180 142h-30v286c0 3.866 6.716 7 15 7 8.284 0 15-3.134 15-7V142z"
-          fill={isOn ? '#1A7BB5' : '#0A2D6E'}
+          fill={isOn ? '#999' : '#555'}
           style={{ transition: 'fill 0.6s ease' }}
         />
-        {/* Base */}
+        {/* Base side */}
         <path d="M165 464c44.183 0 80-8.954 80-20v-14H85v14c0 11.046 35.817 20 80 20z"
-          fill={isOn ? '#1A7BB5' : '#0A2D6E'}
+          fill={isOn ? '#888' : '#444'}
           style={{ transition: 'fill 0.6s ease' }}
         />
+        {/* Base top */}
         <ellipse cx="165" cy="430" rx="80" ry="20"
-          fill={isOn ? '#0E86CA' : '#0A3060'}
+          fill={isOn ? '#aaa' : '#666'}
           style={{ transition: 'fill 0.6s ease' }}
         />
         {/* Cord */}
         <line x1="124" y1="220" x2="124" y2={cordY}
-          stroke={isOn ? '#42C8F5' : '#1A3A5C'}
+          stroke={isOn ? '#ccc' : '#666'}
           strokeWidth="5" strokeLinecap="round"
           style={{ transition: 'stroke 0.5s ease' }}
         />
         {/* Pull handle */}
         <circle cx="124" cy={cordY}
-          r="10" fill={isOn ? '#42C8F5' : '#1A6FA8'}
-          style={{ transition: 'fill 0.5s ease, cy 0.3s ease' }}
+          r="10" fill={isOn ? '#ddd' : '#888'}
+          style={{ transition: 'fill 0.5s ease' }}
         />
         {/* Face — eyes */}
         <path
           d={isOn
-            ? "M102 130 L116 130 M214 130 L228 130"  // open eyes
-            : "M109 130 Q116 122 123 130 M207 130 Q214 122 221 130"}  // sleepy arcs
-          stroke={isOn ? '#0A1A2E' : '#1A3A5C'}
+            ? "M102 130 L116 130 M214 130 L228 130"
+            : "M109 130 Q116 122 123 130 M207 130 Q214 122 221 130"}
+          stroke={isOn ? '#141414' : '#555'}
           strokeWidth="4" strokeLinecap="round" fill="none"
           style={{ transition: 'all 0.4s ease' }}
         />
-        {/* Smile */}
+        {/* Smile + tongue when on */}
         {isOn && (
           <>
-            <path d="M140 165 Q165 182 190 165" stroke="#0A1A2E" strokeWidth="3.5" strokeLinecap="round" fill="none"/>
-            <ellipse cx="168" cy="176" rx="12" ry="9" fill="#FF7096" opacity="0.9"/>
+            <path d="M140 165 Q165 182 190 165" stroke="#141414" strokeWidth="3.5" strokeLinecap="round" fill="none"/>
+            <ellipse cx="168" cy="176" rx="12" ry="9" fill="#e06952" opacity="0.9"/>
           </>
         )}
-        {/* Bulb glow */}
+        {/* Warm bulb glow when on */}
         {isOn && (
-          <circle cx="165" cy="216" r="16" fill="rgba(255,240,160,0.95)"
-            style={{ filter: 'drop-shadow(0 0 10px rgba(255,240,160,0.8))' }}
+          <circle cx="165" cy="216" r="18" fill="rgba(255,240,120,0.98)"
+            style={{ filter: 'drop-shadow(0 0 14px rgba(255,220,80,0.9))' }}
           />
         )}
+        <defs>
+          <linearGradient id="opening-shade" x1="35" y1="220" x2="295" y2="220" gradientUnits="userSpaceOnUse">
+            <stop stopColor="#000"/>
+            <stop offset="1" stopColor="#000" stopOpacity="0"/>
+          </linearGradient>
+        </defs>
       </svg>
 
       {/* Logo reveal */}
@@ -225,7 +238,7 @@ function LampScreen({ onDone }: { onDone: () => void }) {
           animation: 'logo-in 0.7s ease forwards',
         }}>
           {/* Motorcycle SVG logo */}
-          <svg viewBox="0 0 160 100" width="90" height="56" style={{ filter: 'drop-shadow(0 0 12px rgba(66,200,245,0.7))' }}>
+          <svg viewBox="0 0 160 100" width="90" height="56" style={{ filter: 'drop-shadow(0 0 14px rgba(255,220,80,0.8))' }}>
             <line x1="32" y1="52" x2="56" y2="38" stroke="white" strokeWidth="3.5" strokeLinecap="round"/>
             <line x1="128" y1="52" x2="104" y2="38" stroke="white" strokeWidth="3.5" strokeLinecap="round"/>
             <rect x="22" y="46" width="12" height="8" rx="3" fill="white"/>
@@ -244,9 +257,9 @@ function LampScreen({ onDone }: { onDone: () => void }) {
           <h1 style={{
             color: '#FFFFFF', fontSize: '32px', fontWeight: 900, letterSpacing: '6px',
             margin: '10px 0 4px',
-            textShadow: '0 0 20px rgba(66,200,245,0.8), 0 0 40px rgba(66,200,245,0.4)',
+            textShadow: '0 0 20px rgba(255,220,80,0.9), 0 0 40px rgba(255,200,60,0.5)',
           }}>U-BIKE</h1>
-          <p style={{ color: '#42C8F5', fontSize: '11px', letterSpacing: '3px', margin: 0 }}>ADMIN PORTAL</p>
+          <p style={{ color: 'rgba(255,220,80,0.8)', fontSize: '11px', letterSpacing: '3px', margin: 0 }}>ADMIN PORTAL</p>
         </div>
       )}
 
