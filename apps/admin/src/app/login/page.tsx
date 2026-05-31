@@ -464,14 +464,20 @@ function LoginForm({ onSwitch }: { onSwitch: () => void }) {
     setError('');
     setLoading(true);
     try {
-      // Wake the API first if needed
-      const h = await fetch('/api/proxy/health').catch(() => null);
-      if (h && h.status === 503) {
-        setError('API waking up, please wait...');
-        await new Promise(r => setTimeout(r, 8000));
+      try {
+        await login(email, password);
+      } catch (firstErr: any) {
+        // If 503/network, backend is sleeping — wait 35s and retry once
+        const is503 = firstErr?.response?.status === 503 || firstErr?.message?.includes('503') || firstErr?.message?.includes('waking');
+        if (is503) {
+          setError('API waking up... retrying in 35 seconds');
+          await new Promise(r => setTimeout(r, 35000));
+          setError('Retrying...');
+          await login(email, password);
+        } else {
+          throw firstErr;
+        }
       }
-      setError('');
-      await login(email, password);
       router.push('/dashboard');
     } catch (err: any) {
       setError(err.response?.data?.error || err.message || 'Login failed');
@@ -539,23 +545,20 @@ function RegisterForm({ onSwitch }: { onSwitch: () => void }) {
     setLoading(true);
     setError('');
     try {
-      // Step 1 — wake the API (free tier sleeps after 15min)
-      setError('Waking up API server...');
-      const health = await fetch('/api/proxy/health', { method: 'GET' });
-      if (!health.ok && health.status === 503) {
-        // Wait 8 more seconds and retry once
-        setError('API starting up (~30s)... please wait');
-        await new Promise(r => setTimeout(r, 8000));
-        await fetch('/api/proxy/health');
-      }
-      setError('');
+      const body = JSON.stringify({ full_name: name, email, password, role: 'admin' });
+      const opts = { method: 'POST', headers: { 'Content-Type': 'application/json' }, body };
 
-      // Step 2 — register
-      const res = await fetch('/api/proxy/auth/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ full_name: name, email, password, role: 'admin' }),
-      });
+      // First attempt
+      let res = await fetch('/api/proxy/auth/register', opts);
+
+      // If 503 (Render cold start), show message and retry after 35s
+      if (res.status === 503) {
+        setError('API is waking up... retrying in 35 seconds');
+        await new Promise(r => setTimeout(r, 35000));
+        setError('Retrying...');
+        res = await fetch('/api/proxy/auth/register', opts);
+      }
+
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || data.message || 'Registration failed');
       if (data.data?.tokens?.accessToken) {
