@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme.dart';
 import '../providers/auth_provider.dart';
+import 'loader_screen.dart';
+import 'lamp_screen.dart';
 
 class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
@@ -12,92 +13,54 @@ class SplashScreen extends ConsumerStatefulWidget {
 }
 
 class _SplashScreenState extends ConsumerState<SplashScreen> {
+  _Phase _phase = _Phase.loader;
+  bool? _isLoggedIn;
+
   @override
   void initState() {
     super.initState();
-    _navigate();
+    _checkSession();
   }
 
-  Future<void> _navigate() async {
-    await Future.delayed(const Duration(milliseconds: 3000));
+  Future<void> _checkSession() async {
+    // Wait a tick for auth provider to restore session
+    await Future.delayed(const Duration(milliseconds: 500));
+    if (mounted) {
+      setState(() => _isLoggedIn = ref.read(authProvider).isAuthenticated);
+    }
+  }
+
+  void _onLoaderDone() => setState(() => _phase = _Phase.lamp);
+
+  void _onLampDone() {
     if (!mounted) return;
-    final auth = ref.read(authProvider);
-    context.go(auth.isAuthenticated ? '/home' : '/welcome');
+    final loggedIn = _isLoggedIn ?? ref.read(authProvider).isAuthenticated;
+    context.go(loggedIn ? '/home' : '/welcome');
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(gradient: kOceanGradient),
-        child: SafeArea(
-          child: Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Spacer(),
-
-                // Logo mark — motorcycle front view
-                UbikeLogo(size: 140)
-                  .animate()
-                  .scale(begin: const Offset(0.5, 0.5), curve: Curves.elasticOut, duration: 900.ms)
-                  .fadeIn(duration: 600.ms),
-
-                const SizedBox(height: 28),
-
-                // Wordmark
-                Text(
-                  'U-BIKE',
-                  style: TextStyle(
-                    color: kWhite,
-                    fontSize: 44,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 3,
-                    shadows: [Shadow(color: kOceanDeep.withOpacity(0.4), blurRadius: 12, offset: const Offset(0, 4))],
-                  ),
-                ).animate(delay: 400.ms).fadeIn(duration: 500.ms).slideY(begin: 0.3),
-
-                const SizedBox(height: 8),
-
-                Text(
-                  'Rides • Errands • Deliveries',
-                  style: TextStyle(color: kWhite.withOpacity(0.85), fontSize: 14, letterSpacing: 1.5, fontWeight: FontWeight.w400),
-                ).animate(delay: 600.ms).fadeIn(duration: 400.ms),
-
-                const Spacer(),
-
-                // Loading indicator
-                Column(children: [
-                  SizedBox(
-                    width: 40,
-                    height: 40,
-                    child: CircularProgressIndicator(strokeWidth: 2.5, color: kWhite.withOpacity(0.8)),
-                  ),
-                  const SizedBox(height: 12),
-                  Text('Loading...', style: TextStyle(color: kWhite.withOpacity(0.6), fontSize: 12)),
-                  const SizedBox(height: 40),
-                ]).animate(delay: 900.ms).fadeIn(duration: 400.ms),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
+    return switch (_phase) {
+      _Phase.loader => LoaderScreen(onComplete: _onLoaderDone),
+      _Phase.lamp   => LampScreen(onComplete: _onLampDone),
+    };
   }
 }
 
-// ─── U-bike Logo Widget ──────────────────────────────────────────────────────
+enum _Phase { loader, lamp }
+
+// ─── U-bike Logo Widget (used across splash + lamp) ─────────────────────────
 class UbikeLogo extends StatelessWidget {
-  const UbikeLogo({super.key, this.size = 120, this.color});
+  const UbikeLogo({super.key, this.size = 100, this.color});
   final double size;
   final Color? color;
 
   @override
   Widget build(BuildContext context) {
-    final c = color ?? kWhite;
+    final c = color ?? kOcean;
     return SizedBox(
       width: size,
-      height: size,
+      height: size * 0.7,
       child: CustomPaint(painter: _BikeLogoPainter(color: c)),
     );
   }
@@ -109,67 +72,74 @@ class _BikeLogoPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final paint = Paint()..color = color..style = PaintingStyle.stroke..strokeWidth = size.width * 0.045..strokeCap = StrokeCap.round..strokeJoin = StrokeJoin.round;
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = size.width * 0.04
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
     final fill = Paint()..color = color..style = PaintingStyle.fill;
-
     final w = size.width;
     final h = size.height;
 
     // Handlebars
-    final path = Path();
-    path.moveTo(w * 0.25, h * 0.32);
-    path.lineTo(w * 0.42, h * 0.28);
-    path.moveTo(w * 0.75, h * 0.32);
-    path.lineTo(w * 0.58, h * 0.28);
-    canvas.drawPath(path, paint);
+    final bars = Path()
+      ..moveTo(w * 0.22, h * 0.42)
+      ..lineTo(w * 0.38, h * 0.35)
+      ..moveTo(w * 0.78, h * 0.42)
+      ..lineTo(w * 0.62, h * 0.35);
+    canvas.drawPath(bars, paint);
 
     // Grips
-    canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(w * 0.18, h * 0.28, w * 0.08, h * 0.06), const Radius.circular(4)), fill);
-    canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(w * 0.74, h * 0.28, w * 0.08, h * 0.06), const Radius.circular(4)), fill);
+    canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(w * 0.14, h * 0.36, w * 0.09, h * 0.08), const Radius.circular(4)), fill);
+    canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(w * 0.77, h * 0.36, w * 0.09, h * 0.08), const Radius.circular(4)), fill);
 
     // Headlight housing
-    final headPath = Path();
-    headPath.moveTo(w * 0.38, h * 0.28);
-    headPath.quadraticBezierTo(w * 0.38, h * 0.16, w * 0.5, h * 0.14);
-    headPath.quadraticBezierTo(w * 0.62, h * 0.16, w * 0.62, h * 0.28);
-    headPath.lineTo(w * 0.58, h * 0.35);
-    headPath.quadraticBezierTo(w * 0.5, h * 0.38, w * 0.42, h * 0.35);
-    headPath.close();
+    final headPath = Path()
+      ..moveTo(w * 0.36, h * 0.35)
+      ..quadraticBezierTo(w * 0.37, h * 0.18, w * 0.5, h * 0.14)
+      ..quadraticBezierTo(w * 0.63, h * 0.18, w * 0.64, h * 0.35)
+      ..lineTo(w * 0.6, h * 0.44)
+      ..quadraticBezierTo(w * 0.5, h * 0.48, w * 0.4, h * 0.44)
+      ..close();
     canvas.drawPath(headPath, fill);
 
-    // Headlight lens (dark cutout effect)
-    final lensPaint = Paint()..color = kOcean..style = PaintingStyle.fill;
-    canvas.drawCircle(Offset(w * 0.5, h * 0.3), w * 0.07, lensPaint);
-    canvas.drawCircle(Offset(w * 0.5, h * 0.3), w * 0.04, fill);
+    // Headlight lens
+    final lensFill = Paint()..color = color.withOpacity(0.3)..style = PaintingStyle.fill;
+    canvas.drawCircle(Offset(w * 0.5, h * 0.36), w * 0.065, lensFill);
+    canvas.drawCircle(Offset(w * 0.5, h * 0.36), w * 0.04, fill);
 
     // Forks
-    canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(w * 0.435, h * 0.36, w * 0.025, h * 0.18), const Radius.circular(2)), fill);
-    canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(w * 0.54, h * 0.36, w * 0.025, h * 0.18), const Radius.circular(2)), fill);
+    canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(w * 0.44, h * 0.44, w * 0.025, h * 0.2), const Radius.circular(2)), fill);
+    canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(w * 0.535, h * 0.44, w * 0.025, h * 0.2), const Radius.circular(2)), fill);
 
-    // Front tyre
-    final tyrePath = Path();
-    tyrePath.addRRect(RRect.fromRectAndRadius(Rect.fromLTWH(w * 0.42, h * 0.54, w * 0.16, w * 0.38), const Radius.circular(6)));
-    canvas.drawPath(tyrePath, fill);
+    // Tyre
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(Rect.fromLTWH(w * 0.41, h * 0.64, w * 0.18, w * 0.42), const Radius.circular(7)),
+      fill,
+    );
 
-    // Tyre tread lines
-    final treadPaint = Paint()..color = kOcean..strokeWidth = size.width * 0.02..strokeCap = StrokeCap.round;
+    // Tread
+    final tread = Paint()..color = color.withOpacity(0.3)..strokeWidth = size.width * 0.02..strokeCap = StrokeCap.round..style = PaintingStyle.stroke;
     for (int i = 0; i < 5; i++) {
-      final y = h * (0.58 + i * 0.06);
-      canvas.drawLine(Offset(w * 0.43, y), Offset(w * 0.5, y - h * 0.03), treadPaint);
-      canvas.drawLine(Offset(w * 0.57, y), Offset(w * 0.5, y - h * 0.03), treadPaint);
+      final y = h * (0.69 + i * 0.07);
+      canvas.drawLine(Offset(w * 0.42, y), Offset(w * 0.5, y - h * 0.04), tread);
+      canvas.drawLine(Offset(w * 0.58, y), Offset(w * 0.5, y - h * 0.04), tread);
     }
 
-    // Green leaf (top right)
-    final leafPaint = Paint()..color = const Color(0xFF4CAF50)..style = PaintingStyle.fill;
-    final leafPath = Path();
-    leafPath.moveTo(w * 0.72, h * 0.18);
-    leafPath.quadraticBezierTo(w * 0.88, h * 0.06, w * 0.9, h * 0.1);
-    leafPath.quadraticBezierTo(w * 0.78, h * 0.24, w * 0.72, h * 0.18);
-    canvas.drawPath(leafPath, leafPaint);
+    // Green leaf
+    final leafFill = Paint()..color = const Color(0xFF4CAF50)..style = PaintingStyle.fill;
+    final leafPath = Path()
+      ..moveTo(w * 0.73, h * 0.18)
+      ..quadraticBezierTo(w * 0.88, h * 0.06, w * 0.91, h * 0.1)
+      ..quadraticBezierTo(w * 0.79, h * 0.26, w * 0.73, h * 0.18);
+    canvas.drawPath(leafPath, leafFill);
 
-    // Leaf vein
-    final veinPaint = Paint()..color = kWhite.withOpacity(0.7)..strokeWidth = 1.5..strokeCap = StrokeCap.round;
-    canvas.drawLine(Offset(w * 0.72, h * 0.18), Offset(w * 0.87, h * 0.09), veinPaint);
+    // Speed lines (right side)
+    final lines = Paint()..color = color..strokeWidth = size.width * 0.025..strokeCap = StrokeCap.round..style = PaintingStyle.stroke;
+    canvas.drawLine(Offset(w * 0.88, h * 0.72), Offset(w * 1.0, h * 0.72), lines);
+    canvas.drawLine(Offset(w * 0.88, h * 0.82), Offset(w * 0.98, h * 0.82), lines);
+    canvas.drawLine(Offset(w * 0.88, h * 0.92), Offset(w * 0.95, h * 0.92), lines);
   }
 
   @override

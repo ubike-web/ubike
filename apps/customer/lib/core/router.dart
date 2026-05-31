@@ -5,6 +5,7 @@ import '../features/auth/screens/welcome_screen.dart';
 import '../features/auth/screens/phone_screen.dart';
 import '../features/auth/screens/otp_screen.dart';
 import '../features/auth/screens/register_screen.dart';
+import '../features/auth/screens/login_screen.dart';
 import '../features/auth/providers/auth_provider.dart';
 import '../features/home/screens/home_screen.dart';
 import '../features/rides/screens/destination_search_screen.dart';
@@ -27,7 +28,7 @@ final routerProvider = Provider<GoRouter>((ref) {
     redirect: (_, state) {
       final isAuth = auth.isAuthenticated;
       final loc = state.matchedLocation;
-      final publicRoutes = ['/splash', '/welcome', '/phone', '/otp', '/register'];
+      final publicRoutes = ['/splash', '/welcome', '/phone', '/otp', '/register', '/login'];
       final isPublic = publicRoutes.any((r) => loc.startsWith(r));
 
       if (!isAuth && !isPublic) return '/welcome';
@@ -43,6 +44,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         return OtpScreen(phone: extra['phone'] as String? ?? '');
       }),
       GoRoute(path: '/register', builder: (_, __) => const RegisterScreen()),
+      GoRoute(path: '/login', builder: (_, __) => const LoginScreen()),
       GoRoute(path: '/home', builder: (_, __) => const HomeScreen()),
 
       // Rides
