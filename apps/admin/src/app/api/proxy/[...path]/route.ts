@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://ubike-api.onrender.com/api/v1';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://ubike.onrender.com/api/v1';
 
 // Server-side proxy — eliminates all CORS issues
 // /api/proxy/auth/register → https://ubike-api.onrender.com/api/v1/auth/register
