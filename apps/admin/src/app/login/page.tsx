@@ -461,8 +461,16 @@ function LoginForm({ onSwitch }: { onSwitch: () => void }) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(''); setLoading(true);
+    setError('');
+    setLoading(true);
     try {
+      // Wake the API first if needed
+      const h = await fetch('/api/proxy/health').catch(() => null);
+      if (h && h.status === 503) {
+        setError('API waking up, please wait...');
+        await new Promise(r => setTimeout(r, 8000));
+      }
+      setError('');
       await login(email, password);
       router.push('/dashboard');
     } catch (err: any) {
@@ -529,8 +537,20 @@ function RegisterForm({ onSwitch }: { onSwitch: () => void }) {
     }
     if (password.length < 8) { setError('Password must be at least 8 characters'); return; }
     setLoading(true);
+    setError('');
     try {
-      // Use same-origin proxy — no CORS ever
+      // Step 1 — wake the API (free tier sleeps after 15min)
+      setError('Waking up API server...');
+      const health = await fetch('/api/proxy/health', { method: 'GET' });
+      if (!health.ok && health.status === 503) {
+        // Wait 8 more seconds and retry once
+        setError('API starting up (~30s)... please wait');
+        await new Promise(r => setTimeout(r, 8000));
+        await fetch('/api/proxy/health');
+      }
+      setError('');
+
+      // Step 2 — register
       const res = await fetch('/api/proxy/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -544,7 +564,7 @@ function RegisterForm({ onSwitch }: { onSwitch: () => void }) {
       alert('✅ Account created! Please sign in.');
       onSwitch();
     } catch (err: any) {
-      setError(err.message || 'Registration failed. Try again in 30s (API cold start).');
+      setError(err.message || 'Registration failed. Try again in 30s.');
     } finally { setLoading(false); }
   };
 
@@ -605,9 +625,15 @@ function Logo() {
 }
 
 function SpinCard({ angle, children }: { angle: number; children: React.ReactNode }) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  // Render static border on server, animated on client — avoids hydration mismatch
+  const bg = mounted
+    ? `conic-gradient(from ${angle}deg, #0E86CA, #42C8F5, #0A2D6E, #0E86CA, #42C8F5, #0A2D6E, #0E86CA)`
+    : 'linear-gradient(135deg, #0E86CA, #42C8F5, #0A2D6E)';
   return (
-    <div style={{
-      background: `conic-gradient(from ${angle}deg, #0E86CA, #42C8F5, #0A2D6E, #0E86CA, #42C8F5, #0A2D6E, #0E86CA)`,
+    <div suppressHydrationWarning style={{
+      background: bg,
       padding: '3px', borderRadius: '22px',
       boxShadow: '0 0 30px rgba(14,134,202,0.35), 0 0 60px rgba(66,200,245,0.12)',
     }}>
