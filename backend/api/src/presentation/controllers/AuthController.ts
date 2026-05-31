@@ -14,7 +14,7 @@ const emailRegisterSchema = Joi.object({
   email: Joi.string().email().required(),
   password: Joi.string().min(8).required(),
   full_name: Joi.string().required(),
-  role: Joi.string().valid('customer', 'passenger_rider', 'errands_rider').default('customer'),
+  role: Joi.string().valid('customer', 'passenger_rider', 'errands_rider', 'admin', 'super_admin').default('customer'),
 });
 const emailLoginSchema = Joi.object({
   email: Joi.string().email().required(),
