@@ -96,149 +96,312 @@ function LampScreen({ onDone }: { onDone: () => void }) {
   const [isOn, setIsOn] = useState(false);
   const [showLogo, setShowLogo] = useState(false);
   const [cordY, setCordY] = useState(340);
+  const [glowSize, setGlowSize] = useState(0);
 
-  const handleTap = async () => {
+  useEffect(() => {
+    if (!isOn) return;
+    // Animate glow expanding after light turns on
+    let size = 0;
+    const id = setInterval(() => {
+      size = Math.min(size + 4, 100);
+      setGlowSize(size);
+      if (size >= 100) clearInterval(id);
+    }, 16);
+    return () => clearInterval(id);
+  }, [isOn]);
+
+  const handleTap = () => {
     if (isOn) return;
-    // Animate cord pull
-    setCordY(380);
-    setTimeout(() => setCordY(340), 300);
+    setCordY(390);
+    setTimeout(() => setCordY(340), 320);
     setTimeout(() => {
       setIsOn(true);
       setTimeout(() => {
         setShowLogo(true);
         setTimeout(onDone, 3000);
-      }, 400);
-    }, 200);
+      }, 600);
+    }, 250);
   };
+
+  const o = glowSize / 100; // opacity/scale factor 0→1
 
   return (
     <div
       onClick={handleTap}
       style={{
-        height: '100vh', cursor: 'pointer',
-        background: isOn
-          ? 'radial-gradient(ellipse at 50% 25%, rgba(255,220,100,0.22) 0%, #1a1a1a 55%, #0d0d0d 100%)'
-          : '#121921',
-        display: 'flex', flexDirection: 'column', alignItems: 'center',
-        justifyContent: 'flex-start', transition: 'background 0.8s ease',
-        position: 'relative', overflow: 'hidden',
+        height: '100vh',
+        cursor: isOn ? 'default' : 'pointer',
+        position: 'relative',
+        overflow: 'hidden',
         userSelect: 'none',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'flex-start',
+        // Realistic dark room — deep navy, not pure black
+        background: isOn
+          ? `radial-gradient(ellipse 70% 60% at 50% 38%,
+              rgba(14,134,202,${0.18 * o}) 0%,
+              rgba(10,45,110,${0.25 * o}) 30%,
+              #060D18 65%,
+              #030810 100%)`
+          : 'radial-gradient(ellipse at 50% 30%, #0A1828 0%, #060D18 60%, #030810 100%)',
+        transition: 'background 1s ease',
       }}
     >
       <style>{`
         @keyframes logo-in {
-          from { opacity: 0; transform: translateY(20px); }
-          to   { opacity: 1; transform: translateY(0); }
+          from { opacity: 0; transform: translateY(24px) scale(0.92); }
+          to   { opacity: 1; transform: translateY(0) scale(1); }
         }
-        @keyframes glow-pulse {
-          0%, 100% { filter: drop-shadow(0 0 12px rgba(255,220,80,0.5)); }
-          50%       { filter: drop-shadow(0 0 32px rgba(255,220,80,0.9)); }
+        @keyframes bulb-flicker {
+          0%,100% { opacity: 1; }
+          92%      { opacity: 1; }
+          93%      { opacity: 0.7; }
+          94%      { opacity: 1; }
+          96%      { opacity: 0.85; }
+          97%      { opacity: 1; }
         }
         @keyframes tap-hint {
-          0%, 100% { opacity: 0.3; transform: translateY(0); }
-          50%       { opacity: 0.8; transform: translateY(6px); }
+          0%,100% { opacity: 0.25; transform: translateY(0); }
+          50%      { opacity: 0.7;  transform: translateY(7px); }
+        }
+        @keyframes ambient-pulse {
+          0%,100% { opacity: 0.7; }
+          50%      { opacity: 1; }
         }
       `}</style>
 
-      {/* Light cone */}
+      {/* ── Realistic light layers when ON ─────────────────────────────── */}
       {isOn && (
-        <div style={{
-          position: 'absolute', top: '200px', left: '50%',
-          transform: 'translateX(-50%)',
-          width: '600px', height: '500px',
-          background: 'conic-gradient(from 250deg at 50% 0%, transparent 0deg, rgba(255,220,80,0.15) 30deg, transparent 60deg)',
-          pointerEvents: 'none',
-          animation: 'glow-pulse 2s ease-in-out infinite',
-        }} />
+        <>
+          {/* Wide ambient fill — soft room glow */}
+          <div style={{
+            position: 'absolute', inset: 0, pointerEvents: 'none',
+            background: `radial-gradient(ellipse 90% 80% at 50% 42%,
+              rgba(66,200,245,${0.06 * o}) 0%,
+              rgba(14,134,202,${0.04 * o}) 40%,
+              transparent 75%)`,
+            animation: 'ambient-pulse 3s ease-in-out infinite',
+          }} />
+
+          {/* Hard cone — trapezoid light beam */}
+          <div style={{
+            position: 'absolute', top: '230px', left: '50%',
+            transform: 'translateX(-50%)',
+            width: 0, height: 0,
+            borderLeft: `${220 * o}px solid transparent`,
+            borderRight: `${220 * o}px solid transparent`,
+            borderTop: `${480 * o}px solid rgba(66,200,245,${0.055 * o})`,
+            pointerEvents: 'none',
+            filter: 'blur(2px)',
+          }} />
+
+          {/* Inner bright core of cone */}
+          <div style={{
+            position: 'absolute', top: '232px', left: '50%',
+            transform: 'translateX(-50%)',
+            width: 0, height: 0,
+            borderLeft: `${90 * o}px solid transparent`,
+            borderRight: `${90 * o}px solid transparent`,
+            borderTop: `${360 * o}px solid rgba(180,230,255,${0.07 * o})`,
+            pointerEvents: 'none',
+            filter: 'blur(1px)',
+          }} />
+
+          {/* Floor pool of light */}
+          <div style={{
+            position: 'absolute', bottom: '10%', left: '50%',
+            transform: 'translateX(-50%)',
+            width: `${500 * o}px`, height: `${80 * o}px`,
+            borderRadius: '50%',
+            background: `radial-gradient(ellipse, rgba(66,200,245,${0.12 * o}) 0%, transparent 70%)`,
+            pointerEvents: 'none',
+            filter: 'blur(8px)',
+          }} />
+        </>
       )}
 
-      {/* Lamp SVG */}
+      {/* ── Lamp SVG ────────────────────────────────────────────────────── */}
       <svg
         viewBox="0 0 333 484"
-        style={{ width: '200px', marginTop: '40px', overflow: 'visible', transition: 'filter 0.6s ease',
-          filter: isOn ? 'drop-shadow(0 0 24px rgba(255,220,80,0.7))' : 'none' }}
+        style={{
+          width: '220px', marginTop: '28px', overflow: 'visible',
+          filter: isOn
+            ? `drop-shadow(0 0 ${12 + 20 * o}px rgba(14,134,202,${0.5 + 0.4 * o}))
+               drop-shadow(0 4px 12px rgba(0,0,0,0.7))`
+            : 'drop-shadow(0 4px 16px rgba(0,0,0,0.8))',
+          transition: 'filter 0.8s ease',
+        }}
       >
-        {/* Lamp shade */}
+        <defs>
+          {/* Metallic shade gradient — lit left side */}
+          <linearGradient id="shade-grad" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%"   stopColor={isOn ? '#1A7BB5' : '#0A2540'} />
+            <stop offset="30%"  stopColor={isOn ? '#0E86CA' : '#0D3560'} />
+            <stop offset="60%"  stopColor={isOn ? '#0A6BA0' : '#0A2D6E'} />
+            <stop offset="100%" stopColor={isOn ? '#073E5E' : '#061A3A'} />
+          </linearGradient>
+          {/* Post gradient */}
+          <linearGradient id="post-grad" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%"   stopColor={isOn ? '#1890D8' : '#0D3560'} />
+            <stop offset="50%"  stopColor={isOn ? '#0E86CA' : '#0A2D6E'} />
+            <stop offset="100%" stopColor={isOn ? '#073E5E' : '#061A3A'} />
+          </linearGradient>
+          {/* Base gradient */}
+          <linearGradient id="base-grad" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%"   stopColor={isOn ? '#1485C8' : '#0B2E62'} />
+            <stop offset="50%"  stopColor={isOn ? '#0E86CA' : '#0A2D6E'} />
+            <stop offset="100%" stopColor={isOn ? '#073060' : '#061230'} />
+          </linearGradient>
+          {/* Opening glow */}
+          <radialGradient id="opening-glow" cx="50%" cy="50%" r="50%">
+            <stop offset="0%"   stopColor={isOn ? 'rgba(66,200,245,0.95)' : 'rgba(10,30,80,0.9)'} />
+            <stop offset="60%"  stopColor={isOn ? 'rgba(14,134,202,0.7)'  : 'rgba(8,20,55,0.8)'} />
+            <stop offset="100%" stopColor={isOn ? 'rgba(10,60,120,0.3)'   : 'rgba(5,12,35,0.6)'} />
+          </radialGradient>
+          {/* Shade highlight (sheen) */}
+          <linearGradient id="shade-sheen" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%"   stopColor="rgba(255,255,255,0.12)" />
+            <stop offset="25%"  stopColor="rgba(255,255,255,0.06)" />
+            <stop offset="100%" stopColor="rgba(255,255,255,0)" />
+          </linearGradient>
+          {/* Bulb bloom */}
+          <radialGradient id="bulb-bloom" cx="50%" cy="50%" r="50%">
+            <stop offset="0%"   stopColor="rgba(220,240,255,1)" />
+            <stop offset="40%"  stopColor="rgba(66,200,245,0.9)" />
+            <stop offset="100%" stopColor="rgba(14,134,202,0)" />
+          </radialGradient>
+        </defs>
+
+        {/* Shade body */}
         <path
           d="M164.859 0c55.229 0 100 8.954 100 20l29.859 199.06C291.529 208.451 234.609 200 164.859 200S38.189 208.451 35 219.06L64.859 20c0-11.046 44.772-20 100-20z"
-          fill={isOn ? '#888' : '#444'}
-          style={{ transition: 'fill 0.6s ease' }}
+          fill="url(#shade-grad)"
+          style={{ transition: 'fill 0.7s ease' }}
         />
-        {/* Shade opening — warm yellow glow when on */}
+        {/* Shade sheen highlight */}
+        <path
+          d="M164.859 0c55.229 0 100 8.954 100 20l29.859 199.06C291.529 208.451 234.609 200 164.859 200S38.189 208.451 35 219.06L64.859 20c0-11.046 44.772-20 100-20z"
+          fill="url(#shade-sheen)"
+        />
+
+        {/* Shade rim (top ellipse) */}
+        <ellipse cx="165" cy="20" rx="100" ry="14"
+          fill={isOn ? '#1A9EDF' : '#0B3570'}
+          style={{ transition: 'fill 0.7s ease' }}
+        />
+
+        {/* Opening — glowing ellipse */}
         <ellipse cx="165" cy="220" rx="130" ry="20"
-          fill={isOn ? 'hsl(50, 90%, 85%)' : '#1a1a1a'}
-          style={{ transition: 'fill 0.6s ease' }}
+          fill="url(#opening-glow)"
+          style={{ transition: 'fill 0.7s ease' }}
         />
-        {/* Shade opening shade overlay */}
-        <ellipse cx="165" cy="220" rx="130" ry="20"
-          fill="url(#opening-shade)"
-          opacity={isOn ? 0 : 1}
-          style={{ transition: 'opacity 0.6s ease' }}
-        />
+
         {/* Post */}
         <path d="M180 142h-30v286c0 3.866 6.716 7 15 7 8.284 0 15-3.134 15-7V142z"
-          fill={isOn ? '#999' : '#555'}
-          style={{ transition: 'fill 0.6s ease' }}
+          fill="url(#post-grad)"
+          style={{ transition: 'fill 0.7s ease' }}
         />
+        {/* Post highlight */}
+        <rect x="150" y="142" width="8" height="286" rx="4"
+          fill="rgba(255,255,255,0.08)"
+        />
+
         {/* Base side */}
         <path d="M165 464c44.183 0 80-8.954 80-20v-14H85v14c0 11.046 35.817 20 80 20z"
-          fill={isOn ? '#888' : '#444'}
-          style={{ transition: 'fill 0.6s ease' }}
+          fill="url(#base-grad)"
+          style={{ transition: 'fill 0.7s ease' }}
         />
         {/* Base top */}
         <ellipse cx="165" cy="430" rx="80" ry="20"
-          fill={isOn ? '#aaa' : '#666'}
-          style={{ transition: 'fill 0.6s ease' }}
+          fill={isOn ? '#1A9EDF' : '#0B3570'}
+          style={{ transition: 'fill 0.7s ease' }}
         />
+        {/* Base highlight sheen */}
+        <ellipse cx="145" cy="428" rx="30" ry="7"
+          fill="rgba(255,255,255,0.07)"
+        />
+
         {/* Cord */}
-        <line x1="124" y1="220" x2="124" y2={cordY}
-          stroke={isOn ? '#ccc' : '#666'}
-          strokeWidth="5" strokeLinecap="round"
-          style={{ transition: 'stroke 0.5s ease' }}
+        <line x1="124" y1="225" x2="124" y2={cordY}
+          stroke={isOn ? '#42C8F5' : '#0D3060'}
+          strokeWidth="4.5" strokeLinecap="round"
+          style={{ transition: 'stroke 0.6s ease, stroke-dashoffset 0.3s ease' }}
+        />
+        {/* Cord highlight */}
+        <line x1="125" y1="225" x2="125" y2={cordY}
+          stroke={isOn ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.05)'}
+          strokeWidth="1.5" strokeLinecap="round"
+          style={{ transition: 'stroke 0.6s ease' }}
         />
         {/* Pull handle */}
-        <circle cx="124" cy={cordY}
-          r="10" fill={isOn ? '#ddd' : '#888'}
+        <circle cx="124" cy={cordY} r="11"
+          fill={isOn ? '#0E86CA' : '#0A2D6E'}
           style={{ transition: 'fill 0.5s ease' }}
         />
+        <circle cx="121" cy={cordY - 3} r="5"
+          fill={isOn ? 'rgba(66,200,245,0.5)' : 'rgba(255,255,255,0.05)'}
+          style={{ transition: 'fill 0.5s ease' }}
+        />
+
         {/* Face — eyes */}
         <path
           d={isOn
-            ? "M102 130 L116 130 M214 130 L228 130"
-            : "M109 130 Q116 122 123 130 M207 130 Q214 122 221 130"}
-          stroke={isOn ? '#141414' : '#555'}
-          strokeWidth="4" strokeLinecap="round" fill="none"
-          style={{ transition: 'all 0.4s ease' }}
+            ? 'M100 128 L118 128 M212 128 L230 128'
+            : 'M107 128 Q116 119 125 128 M205 128 Q214 119 223 128'}
+          stroke={isOn ? 'rgba(10,26,62,0.9)' : 'rgba(66,200,245,0.4)'}
+          strokeWidth="4.5" strokeLinecap="round" fill="none"
+          style={{ transition: 'all 0.5s ease' }}
         />
-        {/* Smile + tongue when on */}
+        {/* Pupils when on */}
         {isOn && (
           <>
-            <path d="M140 165 Q165 182 190 165" stroke="#141414" strokeWidth="3.5" strokeLinecap="round" fill="none"/>
-            <ellipse cx="168" cy="176" rx="12" ry="9" fill="#e06952" opacity="0.9"/>
+            <circle cx="109" cy="128" r="3" fill="rgba(10,26,62,0.8)" />
+            <circle cx="221" cy="128" r="3" fill="rgba(10,26,62,0.8)" />
           </>
         )}
-        {/* Warm bulb glow when on */}
+        {/* Smile */}
         {isOn && (
-          <circle cx="165" cy="216" r="18" fill="rgba(255,240,120,0.98)"
-            style={{ filter: 'drop-shadow(0 0 14px rgba(255,220,80,0.9))' }}
-          />
+          <>
+            <path d="M138 162 Q165 180 192 162" stroke="rgba(10,26,62,0.8)" strokeWidth="3.5" strokeLinecap="round" fill="none"/>
+            <ellipse cx="168" cy="174" rx="11" ry="8" fill="rgba(224,105,82,0.9)" />
+          </>
         )}
-        <defs>
-          <linearGradient id="opening-shade" x1="35" y1="220" x2="295" y2="220" gradientUnits="userSpaceOnUse">
-            <stop stopColor="#000"/>
-            <stop offset="1" stopColor="#000" stopOpacity="0"/>
-          </linearGradient>
-        </defs>
+
+        {/* Bulb — bloom effect */}
+        {isOn && (
+          <>
+            {/* Outer bloom */}
+            <ellipse cx="165" cy="214" rx="36" ry="24"
+              fill="url(#bulb-bloom)"
+              opacity={o * 0.6}
+              style={{ animation: 'bulb-flicker 6s ease-in-out infinite' }}
+            />
+            {/* Inner bright spot */}
+            <ellipse cx="165" cy="214" rx="18" ry="12"
+              fill="rgba(220,240,255,0.95)"
+              style={{ animation: 'bulb-flicker 6s ease-in-out infinite', filter: 'blur(1px)' }}
+            />
+            {/* Core white */}
+            <ellipse cx="165" cy="213" rx="9" ry="6" fill="white" />
+          </>
+        )}
+        {/* Bulb socket (always visible) */}
+        <ellipse cx="165" cy="216" rx="12" ry="8"
+          fill={isOn ? 'rgba(14,134,202,0.3)' : 'rgba(10,45,110,0.6)'}
+          style={{ transition: 'fill 0.5s ease' }}
+        />
       </svg>
 
-      {/* Logo reveal */}
+      {/* ── Logo reveal ──────────────────────────────────────────────────── */}
       {showLogo && (
         <div style={{
-          display: 'flex', flexDirection: 'column', alignItems: 'center', marginTop: '20px',
-          animation: 'logo-in 0.7s ease forwards',
+          display: 'flex', flexDirection: 'column', alignItems: 'center', marginTop: '16px',
+          animation: 'logo-in 0.8s cubic-bezier(0.34,1.56,0.64,1) forwards',
         }}>
-          {/* Motorcycle SVG logo */}
-          <svg viewBox="0 0 160 100" width="90" height="56" style={{ filter: 'drop-shadow(0 0 14px rgba(255,220,80,0.8))' }}>
+          <svg viewBox="0 0 160 100" width="92" height="58"
+            style={{ filter: `drop-shadow(0 0 18px rgba(66,200,245,0.9)) drop-shadow(0 0 6px rgba(255,255,255,0.4))` }}>
             <line x1="32" y1="52" x2="56" y2="38" stroke="white" strokeWidth="3.5" strokeLinecap="round"/>
             <line x1="128" y1="52" x2="104" y2="38" stroke="white" strokeWidth="3.5" strokeLinecap="round"/>
             <rect x="22" y="46" width="12" height="8" rx="3" fill="white"/>
@@ -257,9 +420,9 @@ function LampScreen({ onDone }: { onDone: () => void }) {
           <h1 style={{
             color: '#FFFFFF', fontSize: '32px', fontWeight: 900, letterSpacing: '6px',
             margin: '10px 0 4px',
-            textShadow: '0 0 20px rgba(255,220,80,0.9), 0 0 40px rgba(255,200,60,0.5)',
+            textShadow: '0 0 24px rgba(66,200,245,1), 0 0 48px rgba(14,134,202,0.7), 0 0 80px rgba(14,134,202,0.3)',
           }}>U-BIKE</h1>
-          <p style={{ color: 'rgba(255,220,80,0.8)', fontSize: '11px', letterSpacing: '3px', margin: 0 }}>ADMIN PORTAL</p>
+          <p style={{ color: '#42C8F5', fontSize: '11px', letterSpacing: '4px', margin: 0, textShadow: '0 0 12px rgba(66,200,245,0.8)' }}>ADMIN PORTAL</p>
         </div>
       )}
 
