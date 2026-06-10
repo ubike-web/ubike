@@ -47,5 +47,11 @@ router.post('/end-ride',
     rideController.endRide
 )
 
+router.post('/rate',
+    authMiddleware.authUser,
+    body('rideId').isUUID().withMessage('Invalid ride id'),
+    body('rating').isInt({ min: 1, max: 5 }).withMessage('Rating must be 1-5'),
+    rideController.rateRide
+)
 
 module.exports = router;

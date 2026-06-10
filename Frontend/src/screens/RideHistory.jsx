@@ -182,7 +182,7 @@ export const Ride = ({ ride }) => {
           <Clock size={13} className="-mt-[1px]" /> {formatTime(ride.createdAt)}
         </h1>
         <h1 className="text-sm flex gap-1 items-center font-semibold ">
-          <CreditCard size={13} className="-mt-[1px] text-black" />₹ {ride.fare}
+          <CreditCard size={13} className="-mt-[1px] text-black" />KES {ride.fare}
         </h1>
         {/* </div>
         <div className="flex flex-wrap gap-2 justify-around">

@@ -4,6 +4,7 @@ const mapService = require("../services/map.service");
 const { sendMessageToSocketId } = require("../socket");
 const rideModel = require("../models/ride.model");
 const userModel = require("../models/user.model");
+const supabase = require("../config/supabase");
 
 module.exports.chatDetails = async (req, res) => {
   const { id } = req.params;
@@ -228,6 +229,36 @@ module.exports.endRide = async (req, res) => {
     });
 
     return res.status(200).json(ride);
+  } catch (err) {
+    return res.status(500).json({ message: err.message });
+  }
+};
+
+module.exports.rateRide = async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
+
+  const { rideId, rating } = req.body;
+  const userId = req.user._id;
+
+  try {
+    const { data: ride } = await supabase.from('qr_rides').select('user_id, captain_id').eq('id', rideId).maybeSingle();
+    if (!ride) return res.status(404).json({ message: 'Ride not found' });
+    if (ride.user_id !== userId) return res.status(403).json({ message: 'Not your ride' });
+
+    await supabase.from('qr_rides').update({ captain_rating: rating, updated_at: new Date().toISOString() }).eq('id', rideId);
+
+    if (ride.captain_id) {
+      const { data: captain } = await supabase.from('qr_captains').select('total_rating, rating_count').eq('id', ride.captain_id).maybeSingle();
+      if (captain) {
+        await supabase.from('qr_captains').update({
+          total_rating: (captain.total_rating || 0) + rating,
+          rating_count: (captain.rating_count || 0) + 1,
+        }).eq('id', ride.captain_id);
+      }
+    }
+
+    return res.status(200).json({ message: 'Rating submitted' });
   } catch (err) {
     return res.status(500).json({ message: err.message });
   }

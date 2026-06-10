@@ -148,9 +148,9 @@ function RideDetails({
               <CreditCard size={18} />
               <div>
                 <h1 className="text-lg font-semibold leading-6">
-                  ₹ {fare[selectedVehicle]}
+                  KES {fare[selectedVehicle]}
                 </h1>
-                <p className="text-xs text-gray-800 ">Cash</p>
+                <p className="text-xs text-gray-800">Paystack</p>
               </div>
             </div>
           </div>
@@ -162,7 +162,11 @@ function RideDetails({
               fun={cancelRide}
             />
           ) : (
-            <Button title={"Confirm Ride"} fun={createRide} loading={loading} />
+            <Button
+              title={`Pay KES ${Math.ceil(fare[selectedVehicle] / 2)} to confirm`}
+              fun={createRide}
+              loading={loading}
+            />
           )}
         </div>
       </div>

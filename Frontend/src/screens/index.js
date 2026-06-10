@@ -22,6 +22,8 @@ import ChatScreen from "./ChatScreen";
 import VerifyEmail from "./VerifyEmail";
 import ResetPassword from "./ResetPassword";
 import ForgotPassword from "./ForgotPassword";
+import WalletScreen from "./WalletScreen";
+import RateRiderScreen from "./RateRiderScreen";
 
 export {
   GetStarted,
@@ -40,5 +42,7 @@ export {
   ChatScreen,
   VerifyEmail,
   ResetPassword,
-  ForgotPassword
+  ForgotPassword,
+  WalletScreen,
+  RateRiderScreen,
 };

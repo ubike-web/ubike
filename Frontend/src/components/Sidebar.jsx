@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-import { ChevronRight, CircleUserRound, History, KeyRound, Menu, X } from "lucide-react";
+import { ChevronRight, CircleUserRound, History, KeyRound, Menu, Wallet, X } from "lucide-react";
 import Button from "./Button";
 import axios from "axios";
 import { Link, useNavigate } from "react-router-dom";
@@ -100,6 +100,20 @@ function Sidebar() {
               <ChevronRight />
             </div>
           </Link>
+
+          {newUser?.type === "user" && (
+            <Link
+              to="/user/wallet"
+              className="flex items-center justify-between py-4 cursor-pointer hover:bg-zinc-100 rounded-xl px-3"
+            >
+              <div className="flex gap-3">
+                <Wallet /> <h1>Wallet</h1>
+              </div>
+              <div>
+                <ChevronRight />
+              </div>
+            </Link>
+          )}
 
           <Link
             to={`/${newUser?.type}/reset-password?token=${token}`}

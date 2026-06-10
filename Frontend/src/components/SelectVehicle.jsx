@@ -92,7 +92,7 @@ const Vehicle = ({
         <p className="text-xs text-gray-800 ">{vehicle.description}</p>
       </div>
       <div className="h-12 w-24">
-        <h3 className="font-semibold">₹ {fare[vehicle.type]}</h3>
+        <h3 className="font-semibold">KES {fare[vehicle.type]}</h3>
       </div>
     </div>
   );

@@ -13,11 +13,16 @@ import debounce from "lodash.debounce";
 import { SocketDataContext } from "../contexts/SocketContext";
 import Console from "../utils/console";
 import { LocateFixed } from "lucide-react";
+import { usePaystack } from "../hooks/usePaystack";
+import { useNavigate } from "react-router-dom";
 
 function UserHomeScreen() {
   const token = localStorage.getItem("token");
   const { socket } = useContext(SocketDataContext);
   const { user } = useUser();
+  const navigate = useNavigate();
+  const { pay } = usePaystack();
+
   const [messages, setMessages] = useState(
     JSON.parse(localStorage.getItem("messages")) || []
   );
@@ -29,6 +34,11 @@ function UserHomeScreen() {
   const [rideCreated, setRideCreated] = useState(false);
   const [locating, setLocating] = useState(false);
   const [locationDenied, setLocationDenied] = useState(false);
+  const [paymentLoading, setPaymentLoading] = useState(false);
+
+  // Second-half payment panel
+  const [showSecondPayment, setShowSecondPayment] = useState(false);
+  const [completedRideId, setCompletedRideId] = useState(null);
 
   // Ride details
   const [pickupLocation, setPickupLocation] = useState("");
@@ -81,7 +91,6 @@ function UserHomeScreen() {
     }
     setLocationSuggestion([]);
 
-    // Auto-advance when both fields are filled via suggestion
     const pickup = inputField === "pickup" ? suggestion : pickupLocation;
     const destination = inputField === "destination" ? suggestion : destinationLocation;
     if (pickup.length > 2 && destination.length > 2) {
@@ -145,31 +154,89 @@ function UserHomeScreen() {
     }
   };
 
-  const createRide = async () => {
+  // Pay first half → creates ride → broadcasts to captains
+  const payFirstHalf = async () => {
+    const halfFare = Math.ceil(fare[selectedVehicle] / 2);
+    setPaymentLoading(true);
     try {
-      setLoading(true);
-      const response = await axios.post(
-        `${import.meta.env.VITE_SERVER_URL}/ride/create`,
-        { pickup: pickupLocation, destination: destinationLocation, vehicleType: selectedVehicle },
+      const { data } = await axios.post(
+        `${import.meta.env.VITE_SERVER_URL}/payment/initialize`,
+        { amount: halfFare, email: user.email, description: `QuickRide first payment – ${pickupLocation} to ${destinationLocation}` },
         { headers: { token } }
       );
-      const rideData = {
-        pickup: pickupLocation,
-        destination: destinationLocation,
-        vehicleType: selectedVehicle,
-        fare,
-        confirmedRideData,
-        _id: response.data._id,
-      };
-      localStorage.setItem("rideDetails", JSON.stringify(rideData));
-      setRideCreated(true);
-      rideTimeout.current = setTimeout(() => {
-        cancelRide();
-      }, import.meta.env.VITE_RIDE_TIMEOUT);
-    } catch (error) {
-      Console.error(error);
+
+      pay({
+        email: user.email,
+        amount: halfFare,
+        onSuccess: async (reference) => {
+          try {
+            const rideRes = await axios.post(
+              `${import.meta.env.VITE_SERVER_URL}/payment/confirm-first`,
+              { reference, pickup: pickupLocation, destination: destinationLocation, vehicleType: selectedVehicle },
+              { headers: { token } }
+            );
+            const rideData = {
+              pickup: pickupLocation,
+              destination: destinationLocation,
+              vehicleType: selectedVehicle,
+              fare,
+              confirmedRideData,
+              _id: rideRes.data._id,
+            };
+            localStorage.setItem("rideDetails", JSON.stringify(rideData));
+            setRideCreated(true);
+            rideTimeout.current = setTimeout(() => {
+              cancelRide();
+            }, import.meta.env.VITE_RIDE_TIMEOUT);
+          } catch (err) {
+            Console.error(err);
+            setSearchError("Payment verified but ride creation failed. Contact support.");
+          }
+        },
+        onClose: () => {},
+      });
+    } catch (err) {
+      Console.error(err);
+      setSearchError("Could not initialise payment. Try again.");
     } finally {
-      setLoading(false);
+      setPaymentLoading(false);
+    }
+  };
+
+  // Pay second half after ride ends
+  const paySecondHalf = async () => {
+    const halfFare = Math.ceil(fare[selectedVehicle] / 2);
+    const rideId = completedRideId;
+    setPaymentLoading(true);
+    try {
+      await axios.post(
+        `${import.meta.env.VITE_SERVER_URL}/payment/initialize`,
+        { amount: halfFare, email: user.email, description: `QuickRide second payment – ${pickupLocation} to ${destinationLocation}` },
+        { headers: { token } }
+      );
+
+      pay({
+        email: user.email,
+        amount: halfFare,
+        onSuccess: async (reference) => {
+          try {
+            await axios.post(
+              `${import.meta.env.VITE_SERVER_URL}/payment/confirm-second`,
+              { reference, rideId },
+              { headers: { token } }
+            );
+            setShowSecondPayment(false);
+            navigate(`/user/rate/${rideId}`);
+          } catch (err) {
+            Console.error(err);
+          }
+        },
+        onClose: () => {},
+      });
+    } catch (err) {
+      Console.error(err);
+    } finally {
+      setPaymentLoading(false);
     }
   };
 
@@ -178,7 +245,7 @@ function UserHomeScreen() {
     try {
       setLoading(true);
       await axios.get(
-        `${import.meta.env.VITE_SERVER_URL}/ride/cancel?rideId=${rideDetails._id || rideDetails.confirmedRideData._id}`,
+        `${import.meta.env.VITE_SERVER_URL}/ride/cancel?rideId=${rideDetails._id || rideDetails.confirmedRideData?._id}`,
         { headers: { token } }
       );
       setShowRideDetailsPanel(false);
@@ -204,14 +271,14 @@ function UserHomeScreen() {
     setConfirmedRideData(null);
     setRideCreated(false);
     setSearchError("");
+    setShowSecondPayment(false);
+    setCompletedRideId(null);
   };
 
-  // Auto-detect location on mount
   useEffect(() => {
     detectLocation();
   }, []);
 
-  // Socket Events
   useEffect(() => {
     if (user._id) {
       socket.emit("join", { userId: user._id, userType: "user" });
@@ -231,18 +298,17 @@ function UserHomeScreen() {
       );
     });
 
-    socket.on("ride-ended", () => {
+    socket.on("ride-ended", (data) => {
+      const rideId = data?._id || JSON.parse(localStorage.getItem("rideDetails"))?._id;
+      setCompletedRideId(rideId);
       setShowRideDetailsPanel(false);
       setShowSelectVehiclePanel(false);
-      setShowFindTripPanel(true);
-      setDefaults();
-      localStorage.removeItem("rideDetails");
+      setShowFindTripPanel(false);
+      setShowSecondPayment(true);
       localStorage.removeItem("panelDetails");
-      detectLocation();
     });
   }, [user]);
 
-  // Restore ride/panel state on refresh
   useEffect(() => {
     const storedRideDetails = localStorage.getItem("rideDetails");
     const storedPanelDetails = localStorage.getItem("panelDetails");
@@ -386,12 +452,31 @@ function UserHomeScreen() {
         showPanel={showRideDetailsPanel}
         setShowPanel={setShowRideDetailsPanel}
         showPreviousPanel={setShowSelectVehiclePanel}
-        createRide={createRide}
+        createRide={payFirstHalf}
         cancelRide={cancelRide}
-        loading={loading}
+        loading={loading || paymentLoading}
         rideCreated={rideCreated}
         confirmedRideData={confirmedRideData}
       />
+
+      {/* Second-half payment panel */}
+      {showSecondPayment && (
+        <div className="absolute bottom-0 bg-white w-full rounded-t-xl p-5 shadow-xl">
+          <h2 className="text-xl font-semibold mb-1">Ride Completed!</h2>
+          <p className="text-sm text-zinc-500 mb-4">
+            {pickupLocation.split(", ")[0]} → {destinationLocation.split(", ")[0]}
+          </p>
+          <div className="flex justify-between items-center bg-zinc-50 rounded-lg px-4 py-3 mb-4">
+            <span className="text-sm text-zinc-600">Remaining balance</span>
+            <span className="font-bold text-lg">KES {Math.ceil(fare[selectedVehicle] / 2)}</span>
+          </div>
+          <Button
+            title={`Pay KES ${Math.ceil(fare[selectedVehicle] / 2)}`}
+            loading={paymentLoading}
+            fun={paySecondHalf}
+          />
+        </div>
+      )}
     </div>
   );
 }

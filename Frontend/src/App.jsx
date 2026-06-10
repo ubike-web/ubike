@@ -16,7 +16,9 @@ import {
   ChatScreen,
   VerifyEmail,
   ResetPassword,
-  ForgotPassword
+  ForgotPassword,
+  WalletScreen,
+  RateRiderScreen,
 } from "./screens/";
 import { logger } from "./utils/logger";
 import { SocketDataContext } from "./contexts/SocketContext";
@@ -98,6 +100,22 @@ function App() {
                 <CaptainProtectedWrapper>
                   <RideHistory />
                 </CaptainProtectedWrapper>
+              }
+            />
+            <Route
+              path="/user/wallet"
+              element={
+                <UserProtectedWrapper>
+                  <WalletScreen />
+                </UserProtectedWrapper>
+              }
+            />
+            <Route
+              path="/user/rate/:rideId"
+              element={
+                <UserProtectedWrapper>
+                  <RateRiderScreen />
+                </UserProtectedWrapper>
               }
             />
             <Route path="/:userType/chat/:rideId" element={<ChatScreen />} />

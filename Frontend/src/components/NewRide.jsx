@@ -64,7 +64,7 @@ function NewRide({
             </div>
 
             <div className="text-right">
-              <h1 className="font-semibold text-lg">₹ {rideData?.fare}</h1>
+              <h1 className="font-semibold text-lg">KES {rideData?.fare}</h1>
               <p className="text-xs text-gray-500 ">
                 {(Number(rideData?.distance?.toFixed(2)) / 1000)?.toFixed(1)} Km
               </p>
