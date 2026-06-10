@@ -3,11 +3,10 @@ const captainModel = require("../models/captain.model");
 const captainService = require("../services/captain.service");
 const { validationResult } = require("express-validator");
 const blacklistTokenModel = require("../models/blacklistToken.model");
-const jwt = require("jsonwebtoken");
+const supabase = require("../config/supabase");
 
 module.exports.registerCaptain = asyncHandler(async (req, res) => {
   const errors = validationResult(req);
-
   if (!errors.isEmpty()) {
     return res.status(400).json(errors.array());
   }
@@ -15,61 +14,33 @@ module.exports.registerCaptain = asyncHandler(async (req, res) => {
   const { fullname, email, password, phone, vehicle } = req.body;
 
   const alreadyExists = await captainModel.findOne({ email });
-
   if (alreadyExists) {
     return res.status(400).json({ message: "Captain already exists" });
   }
 
-  const captain = await captainService.createCaptain(
-    fullname.firstname,
-    fullname.lastname,
-    email,
-    password,
-    phone,
-    vehicle.color,
-    vehicle.number,
-    vehicle.capacity,
-    vehicle.type
+  await captainService.createCaptain(
+    fullname.firstname, fullname.lastname, email, password, phone,
+    vehicle.color, vehicle.number, vehicle.capacity, vehicle.type
   );
 
-  const token = captain.generateAuthToken();
-  res
-    .status(201)
-    .json({ message: "Captain registered successfully", token, captain });
+  res.status(201).json({
+    message: "Registration successful! Please check your email to verify your account before logging in.",
+  });
 });
 
 module.exports.verifyEmail = asyncHandler(async (req, res) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    return res.status(400).json(errors.array());
-  }
+  const token = req.cookies.token || req.headers.token;
+  if (!token) return res.status(400).json({ message: "Token required" });
 
-  const { token } = req.body;
-    if (!token) {
-      return res.status(400).json({ message: "Invalid verification link", error: "Token is required" });
-    }
-  
-    let decodedTokenData = jwt.verify(token, process.env.JWT_SECRET);
-    if (!decodedTokenData || decodedTokenData.purpose !== "email-verification") {
-      return res.status(400).json({ message: "You're trying to use an invalid or expired verification link", error: "Invalid token" });
-    }
-  
-    let captain = await captainModel.findOne({ _id: decodedTokenData.id });
-  
-    if (!captain) {
-      return res.status(404).json({ message: "User not found. Please ask for another verification link." });
-    }
-  
-    if (captain.emailVerified) {
-      return res.status(400).json({ message: "Email already verified" });
-    }
-  
-    captain.emailVerified = true;
-    await captain.save();
-  
-    res.status(200).json({
-      message: "Email verified successfully",
-    });
+  const { data: { user }, error } = await supabase.auth.getUser(token);
+  if (error || !user) return res.status(400).json({ message: "Invalid token" });
+
+  res.status(200).json({
+    message: user.email_confirmed_at
+      ? "Email verified successfully"
+      : "Email not yet verified",
+    emailVerified: !!user.email_confirmed_at,
+  });
 });
 
 module.exports.loginCaptain = asyncHandler(async (req, res) => {
@@ -80,20 +51,26 @@ module.exports.loginCaptain = asyncHandler(async (req, res) => {
 
   const { email, password } = req.body;
 
-  const captain = await captainModel.findOne({ email }).select("+password");
-  if (!captain) {
-    res.status(404).json({ message: "Invalid email or password" });
+  let authData;
+  try {
+    authData = await captainModel.signIn(email, password);
+  } catch (err) {
+    const msg = err.message.includes("Email not confirmed")
+      ? "Please verify your email before logging in. Check your inbox for the verification link."
+      : "Invalid email or password";
+    return res.status(401).json({ message: msg });
   }
 
-  const isMatch = await captain.comparePassword(password);
-
-  if (!isMatch) {
-    return res.status(404).json({ message: "Invalid email or password" });
+  if (authData.user.user_metadata?.userType !== 'captain') {
+    return res.status(401).json({ message: "Invalid email or password" });
   }
 
-  const token = captain.generateAuthToken();
+  const profile = await captainModel.findOne({ _id: authData.user.id });
+  if (!profile) return res.status(404).json({ message: "Captain profile not found" });
+
+  const token = authData.session.access_token;
   res.cookie("token", token);
-  res.json({ message: "Logged in successfully", token, captain });
+  res.json({ message: "Logged in successfully", token, captain: profile });
 });
 
 module.exports.captainProfile = asyncHandler(async (req, res) => {
@@ -102,29 +79,28 @@ module.exports.captainProfile = asyncHandler(async (req, res) => {
 
 module.exports.updateCaptainProfile = asyncHandler(async (req, res) => {
   const errors = validationResult(req);
-
   if (!errors.isEmpty()) {
     return res.status(400).json(errors.array());
   }
 
   const { captainData } = req.body;
-  const updatedCaptainData = await captainModel.findOneAndUpdate(
+  const updatedCaptain = await captainModel.findOneAndUpdate(
     { email: req.captain.email },
     captainData,
     { new: true }
   );
 
-  res.status(200).json({
-    message: "Profile updated successfully",
-    user: updatedCaptainData,
-  });
+  res.status(200).json({ message: "Profile updated successfully", user: updatedCaptain });
 });
 
 module.exports.logoutCaptain = asyncHandler(async (req, res) => {
-  res.clearCookie("token");
   const token = req.cookies.token || req.headers.token;
+  res.clearCookie("token");
 
-  await blacklistTokenModel.create({ token });
+  if (token) {
+    await blacklistTokenModel.create({ token });
+    await supabase.auth.admin.signOut(token);
+  }
 
   res.status(200).json({ message: "Logged out successfully" });
 });
@@ -136,23 +112,20 @@ module.exports.resetPassword = asyncHandler(async (req, res) => {
   }
 
   const { token, password } = req.body;
-  let payload;
 
-  try {
-    payload = jwt.verify(token, process.env.JWT_SECRET);
-  } catch (err) {
-    if (err.name === "TokenExpiredError") {
-      return res.status(400).json({ message: "This password reset link has expired or is no longer valid. Please request a new one to continue" });
-    } else {
-      return res.status(400).json({ message: "The password reset link is invalid or has already been used. Please request a new one to proceed", error: err });
-    }
+  const { data: { user }, error } = await supabase.auth.getUser(token);
+  if (error || !user) {
+    return res.status(400).json({
+      message: "This password reset link is invalid or has expired. Please request a new one.",
+    });
   }
 
-  const captain = await captainModel.findById(payload.id);
-  if (!captain) return res.status(404).json({ message: "User not found. Please check your credentials and try again" });
+  const { error: updateError } = await supabase.auth.admin.updateUserById(user.id, { password });
+  if (updateError) {
+    return res.status(500).json({ message: "Failed to reset password. Please try again." });
+  }
 
-  captain.password = await captainModel.hashPassword(password);
-  await captain.save();
-
-  res.status(200).json({ message: "Your password has been successfully reset. You can now log in with your new credentials" });
+  res.status(200).json({
+    message: "Your password has been successfully reset. You can now log in with your new credentials.",
+  });
 });

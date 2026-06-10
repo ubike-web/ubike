@@ -29,15 +29,13 @@ function UserSignup() {
 
     try {
       setLoading(true);
-      const response = await axios.post(
+      await axios.post(
         `${import.meta.env.VITE_SERVER_URL}/user/register`,
         userData
       );
-      Console.log(response);
-      localStorage.setItem("token", response.data.token);
-      navigation("/home");
+      navigation("/login?registered=true");
     } catch (error) {
-      setResponseError(error.response.data[0].msg);
+      setResponseError(error.response?.data?.[0]?.msg || error.response?.data?.message || "Registration failed");
       Console.log(error);
     } finally {
       setLoading(false);

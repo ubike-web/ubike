@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Button, Heading, Input } from "../components";
 import axios from "axios";
 import Console from "../utils/console";
@@ -8,6 +8,8 @@ import Console from "../utils/console";
 function UserLogin() {
   const [responseError, setResponseError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [searchParams] = useSearchParams();
+  const justRegistered = searchParams.get("registered") === "true";
 
   const {
     handleSubmit,
@@ -49,6 +51,11 @@ function UserLogin() {
   return (
     <div className="w-full h-dvh flex flex-col justify-between p-4 pt-6">
       <div>
+        {justRegistered && (
+          <div className="bg-green-100 border border-green-400 text-green-800 text-sm rounded-lg px-4 py-3 mb-4 text-center">
+            Registration successful! Please check your email and verify your account before logging in.
+          </div>
+        )}
         <Heading title={"User Login🧑🏻"} />
         <form onSubmit={handleSubmit(loginUser)}>
           <Input

@@ -39,16 +39,14 @@ function CaptainSignup() {
 
     try {
       setLoading(true);
-      const response = await axios.post(
+      await axios.post(
         `${import.meta.env.VITE_SERVER_URL}/captain/register`,
         captainData
       );
-      Console.log(response);
-      localStorage.setItem("token", response.data.token);
-      navigation("/captain/home");
+      navigation("/captain/login?registered=true");
     } catch (error) {
       setResponseError(
-        error.response.data[0]?.msg || error.response.data.message
+        error.response?.data?.[0]?.msg || error.response?.data?.message || "Registration failed"
       );
       setShowVehiclePanel(false);
       Console.log(error);

@@ -1,6 +1,5 @@
 const supabase = require('../config/supabase');
-const bcrypt = require('bcrypt');
-const jwt = require('jsonwebtoken');
+const { supabaseAuth } = require('../config/supabase');
 
 function makeQuery(fn) {
   return {
@@ -15,13 +14,12 @@ function makeQuery(fn) {
 
 function enrich(row) {
   if (!row) return null;
-  const obj = {
+  return {
     ...row,
     _id: row.id,
     fullname: { firstname: row.firstname, lastname: row.lastname || '' },
     socketId: row.socket_id || '',
     emailVerified: row.email_verified || false,
-    password: row.password_hash,
     rides: [],
     status: row.status || 'inactive',
     vehicle: {
@@ -37,19 +35,10 @@ function enrich(row) {
     select(_) { return this; },
     populate(_) { return this; },
 
-    generateAuthToken() {
-      return jwt.sign({ id: row.id, userType: 'captain' }, process.env.JWT_SECRET, { expiresIn: '24h' });
-    },
-
-    async comparePassword(password) {
-      return bcrypt.compare(password, row.password_hash);
-    },
-
     async save() {
       const { error } = await supabase.from('qr_captains').update({
         email_verified: this.emailVerified,
         socket_id: this.socketId,
-        password_hash: this.password,
         firstname: this.fullname?.firstname || this.firstname,
         lastname: this.fullname?.lastname || this.lastname || '',
         phone: this.phone || '',
@@ -59,7 +48,6 @@ function enrich(row) {
       if (error) throw new Error(error.message);
     },
   };
-  return obj;
 }
 
 module.exports.findOne = (filter) => makeQuery(async () => {
@@ -81,7 +69,6 @@ module.exports.findByIdAndUpdate = async (id, update) => {
   if (update.socketId !== undefined) updates.socket_id = update.socketId;
   if (update.socket_id !== undefined) updates.socket_id = update.socket_id;
   if (update.status !== undefined) updates.status = update.status;
-  // Location update from socket: { location: { type: 'Point', coordinates: [lng, lat] } }
   if (update.location?.coordinates) {
     updates.location_lng = update.location.coordinates[0];
     updates.location_lat = update.location.coordinates[1];
@@ -91,11 +78,8 @@ module.exports.findByIdAndUpdate = async (id, update) => {
 
 module.exports.findOneAndUpdate = async (filter, update, opts = {}) => {
   const updates = { updated_at: new Date().toISOString() };
-  // Handle nested captainData shape: { fullname, phone, vehicle }
-  if (update.fullname) {
-    if (update.fullname.firstname) updates.firstname = update.fullname.firstname;
-    if (update.fullname.lastname !== undefined) updates.lastname = update.fullname.lastname || '';
-  }
+  if (update.fullname?.firstname) updates.firstname = update.fullname.firstname;
+  if (update.fullname?.lastname !== undefined) updates.lastname = update.fullname.lastname || '';
   if (update.phone !== undefined) updates.phone = update.phone;
   if (update.vehicle) {
     if (update.vehicle.color) updates.vehicle_color = update.vehicle.color;
@@ -103,7 +87,6 @@ module.exports.findOneAndUpdate = async (filter, update, opts = {}) => {
     if (update.vehicle.capacity !== undefined) updates.vehicle_capacity = update.vehicle.capacity;
     if (update.vehicle.type) updates.vehicle_type = update.vehicle.type;
   }
-  // Handle status updates
   if (update.status !== undefined) updates.status = update.status;
 
   let q = supabase.from('qr_captains').update(updates);
@@ -118,17 +101,30 @@ module.exports.findOneAndUpdate = async (filter, update, opts = {}) => {
   return null;
 };
 
-module.exports.find = async (filter) => {
-  // Used for getCaptainsInTheRadius — handled in map.service.js directly
-  return [];
-};
+module.exports.find = async () => [];
 
+// Create captain via Supabase Auth (sends verification email automatically)
 module.exports.create = async (data) => {
-  const { data: row, error } = await supabase.from('qr_captains').insert({
+  const { data: authData, error: authError } = await supabaseAuth.auth.signUp({
+    email: data.email,
+    password: data.password,
+    options: {
+      data: {
+        userType: 'captain',
+        firstname: data.fullname.firstname,
+        lastname: data.fullname?.lastname || '',
+        phone: data.phone || '',
+      },
+      emailRedirectTo: `${process.env.CLIENT_URL}/captain/verify-email`,
+    },
+  });
+  if (authError) throw new Error(authError.message);
+
+  const { data: row, error: profileError } = await supabase.from('qr_captains').insert({
+    id: authData.user.id,
     firstname: data.fullname.firstname,
     lastname: data.fullname?.lastname || '',
     email: data.email,
-    password_hash: data.password,
     phone: data.phone || '',
     vehicle_color: data.vehicle.color,
     vehicle_number: data.vehicle.number,
@@ -137,8 +133,14 @@ module.exports.create = async (data) => {
     location_lat: 0,
     location_lng: 0,
   }).select().single();
-  if (error) throw new Error(error.message);
+  if (profileError) throw new Error(profileError.message);
+
   return enrich(row);
 };
 
-module.exports.hashPassword = async (password) => bcrypt.hash(password, 10);
+// Sign in via Supabase Auth — returns { user, session }
+module.exports.signIn = async (email, password) => {
+  const { data, error } = await supabaseAuth.auth.signInWithPassword({ email, password });
+  if (error) throw new Error(error.message);
+  return data;
+};

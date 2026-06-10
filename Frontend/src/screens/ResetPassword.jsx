@@ -1,4 +1,4 @@
-import { Navigate, useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { Navigate, useNavigate, useParams } from 'react-router-dom'
 import { Button, Input } from '../components';
 import { useState } from 'react';
 import { useForm } from "react-hook-form";
@@ -13,8 +13,10 @@ const allowedParams = ["user", "captain"];
 function ResetPassword() {
     const [loading, setLoading] = useState(false);
 
-    const [searchParams] = useSearchParams();
-    const token = searchParams.get("token");
+    // Supabase puts the recovery token in the URL hash after clicking the reset link
+    const hash = window.location.hash;
+    const hashParams = new URLSearchParams(hash.replace("#", "?"));
+    const token = hashParams.get("access_token");
 
     const { userType } = useParams();
     const navigate = useNavigate();

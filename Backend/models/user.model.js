@@ -1,8 +1,6 @@
 const supabase = require('../config/supabase');
-const bcrypt = require('bcrypt');
-const jwt = require('jsonwebtoken');
+const { supabaseAuth } = require('../config/supabase');
 
-// Lazy thenable — supports .select() and .populate() chaining like Mongoose
 function makeQuery(fn) {
   return {
     _fn: fn, _p: null,
@@ -16,30 +14,20 @@ function makeQuery(fn) {
 
 function enrich(row) {
   if (!row) return null;
-  const obj = {
+  return {
     ...row,
     _id: row.id,
     fullname: { firstname: row.firstname, lastname: row.lastname || '' },
     socketId: row.socket_id || '',
     emailVerified: row.email_verified || false,
-    password: row.password_hash,
     rides: [],
     select(_) { return this; },
     populate(_) { return this; },
-
-    generateAuthToken() {
-      return jwt.sign({ id: row.id, userType: 'user' }, process.env.JWT_SECRET, { expiresIn: '24h' });
-    },
-
-    async comparePassword(password) {
-      return bcrypt.compare(password, row.password_hash);
-    },
 
     async save() {
       const { error } = await supabase.from('qr_users').update({
         email_verified: this.emailVerified,
         socket_id: this.socketId,
-        password_hash: this.password,
         firstname: this.fullname?.firstname || this.firstname,
         lastname: this.fullname?.lastname || this.lastname || '',
         phone: this.phone || '',
@@ -48,7 +36,6 @@ function enrich(row) {
       if (error) throw new Error(error.message);
     },
   };
-  return obj;
 }
 
 module.exports.findOne = (filter) => makeQuery(async () => {
@@ -72,16 +59,50 @@ module.exports.findByIdAndUpdate = async (id, update) => {
   await supabase.from('qr_users').update(updates).eq('id', id);
 };
 
+module.exports.findOneAndUpdate = async (filter, update) => {
+  const updates = { updated_at: new Date().toISOString() };
+  if (update.fullname?.firstname) updates.firstname = update.fullname.firstname;
+  if (update.fullname?.lastname !== undefined) updates.lastname = update.fullname.lastname || '';
+  if (update.phone !== undefined) updates.phone = update.phone;
+
+  let q = supabase.from('qr_users').update(updates);
+  if (filter._id) q = q.eq('id', filter._id);
+  const { data } = await q.select().maybeSingle();
+  return enrich(data);
+};
+
+// Create user via Supabase Auth (sends verification email automatically)
 module.exports.create = async (data) => {
-  const { data: row, error } = await supabase.from('qr_users').insert({
+  const { data: authData, error: authError } = await supabaseAuth.auth.signUp({
+    email: data.email,
+    password: data.password,
+    options: {
+      data: {
+        userType: 'user',
+        firstname: data.fullname.firstname,
+        lastname: data.fullname?.lastname || '',
+        phone: data.phone || '',
+      },
+      emailRedirectTo: `${process.env.CLIENT_URL}/user/verify-email`,
+    },
+  });
+  if (authError) throw new Error(authError.message);
+
+  const { data: row, error: profileError } = await supabase.from('qr_users').insert({
+    id: authData.user.id,
     firstname: data.fullname.firstname,
     lastname: data.fullname?.lastname || '',
     email: data.email,
-    password_hash: data.password,
     phone: data.phone || '',
   }).select().single();
-  if (error) throw new Error(error.message);
+  if (profileError) throw new Error(profileError.message);
+
   return enrich(row);
 };
 
-module.exports.hashPassword = async (password) => bcrypt.hash(password, 10);
+// Sign in via Supabase Auth — returns { user, session }
+module.exports.signIn = async (email, password) => {
+  const { data, error } = await supabaseAuth.auth.signInWithPassword({ email, password });
+  if (error) throw new Error(error.message);
+  return data;
+};

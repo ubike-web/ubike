@@ -3,11 +3,10 @@ const userModel = require("../models/user.model");
 const userService = require("../services/user.service");
 const { validationResult } = require("express-validator");
 const blacklistTokenModel = require("../models/blacklistToken.model");
-const jwt = require("jsonwebtoken");
+const supabase = require("../config/supabase");
 
 module.exports.registerUser = asyncHandler(async (req, res) => {
   const errors = validationResult(req);
-
   if (!errors.isEmpty()) {
     return res.status(400).json(errors.array());
   }
@@ -15,56 +14,31 @@ module.exports.registerUser = asyncHandler(async (req, res) => {
   const { fullname, email, password, phone } = req.body;
 
   const alreadyExists = await userModel.findOne({ email });
-
   if (alreadyExists) {
     return res.status(400).json({ message: "User already exists" });
   }
 
-  const user = await userService.createUser(
-    fullname.firstname,
-    fullname.lastname,
-    email,
-    password,
-    phone
-  );
+  await userService.createUser(fullname.firstname, fullname.lastname, email, password, phone);
 
-  const token = user.generateAuthToken();
-  res
-    .status(201)
-    .json({ message: "User registered successfully", token, user });
+  res.status(201).json({
+    message: "Registration successful! Please check your email to verify your account before logging in.",
+  });
 });
 
 module.exports.verifyEmail = asyncHandler(async (req, res) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    return res.status(400).json(errors.array());
-  }
+  // Verification is handled by Supabase when the user clicks the email link.
+  // This endpoint just confirms the current verified status for the frontend.
+  const token = req.cookies.token || req.headers.token;
+  if (!token) return res.status(400).json({ message: "Token required" });
 
-  const { token } = req.body;
-  if (!token) {
-    return res.status(400).json({ message: "Invalid verification link", error: "Token is required" });
-  }
-
-  let decodedTokenData = jwt.verify(token, process.env.JWT_SECRET);
-  if (!decodedTokenData || decodedTokenData.purpose !== "email-verification") {
-    return res.status(400).json({ message: "You're trying to use an invalid or expired verification link", error: "Invalid token" });
-  }
-
-  let user = await userModel.findOne({ _id: decodedTokenData.id });
-
-  if (!user) {
-    return res.status(404).json({ message: "User not found. Please ask for another verification link." });
-  }
-
-  if (user.emailVerified) {
-    return res.status(400).json({ message: "Email already verified" });
-  }
-
-  user.emailVerified = true;
-  await user.save();
+  const { data: { user }, error } = await supabase.auth.getUser(token);
+  if (error || !user) return res.status(400).json({ message: "Invalid token" });
 
   res.status(200).json({
-    message: "Email verified successfully",
+    message: user.email_confirmed_at
+      ? "Email verified successfully"
+      : "Email not yet verified",
+    emailVerified: !!user.email_confirmed_at,
   });
 });
 
@@ -76,34 +50,37 @@ module.exports.loginUser = asyncHandler(async (req, res) => {
 
   const { email, password } = req.body;
 
-  const user = await userModel.findOne({ email }).select("+password");
-  if (!user) {
-    res.status(404).json({ message: "Invalid email or password" });
+  let authData;
+  try {
+    authData = await userModel.signIn(email, password);
+  } catch (err) {
+    const msg = err.message.includes("Email not confirmed")
+      ? "Please verify your email before logging in. Check your inbox for the verification link."
+      : "Invalid email or password";
+    return res.status(401).json({ message: msg });
   }
 
-  const isMatch = await user.comparePassword(password);
-
-  if (!isMatch) {
-    return res.status(404).json({ message: "Invalid email or password" });
+  // Verify it is a user account (not captain)
+  if (authData.user.user_metadata?.userType !== 'user') {
+    return res.status(401).json({ message: "Invalid email or password" });
   }
 
-  const token = user.generateAuthToken();
+  const profile = await userModel.findOne({ _id: authData.user.id });
+  if (!profile) return res.status(404).json({ message: "User profile not found" });
+
+  const token = authData.session.access_token;
   res.cookie("token", token);
-
   res.json({
     message: "Logged in successfully",
     token,
     user: {
-      _id: user._id,
-      fullname: {
-        firstname: user.fullname.firstname,
-        lastname: user.fullname.lastname,
-      },
-      email: user.email,
-      phone: user.phone,
-      rides: user.rides,
-      socketId: user.socketId,
-      emailVerified: user.emailVerified,
+      _id: profile._id,
+      fullname: profile.fullname,
+      email: profile.email,
+      phone: profile.phone,
+      rides: profile.rides,
+      socketId: profile.socketId,
+      emailVerified: !!authData.user.email_confirmed_at,
     },
   });
 });
@@ -118,27 +95,23 @@ module.exports.updateUserProfile = asyncHandler(async (req, res) => {
     return res.status(400).json(errors.array());
   }
 
-  const { fullname,  phone } = req.body;
-
-  const updatedUserData = await userModel.findOneAndUpdate(
+  const { fullname, phone } = req.body;
+  const updatedUser = await userModel.findOneAndUpdate(
     { _id: req.user._id },
-    {
-      fullname: fullname,
-      phone,
-    },
-    { new: true }
+    { fullname, phone }
   );
 
-  res
-    .status(200)
-    .json({ message: "Profile updated successfully", user: updatedUserData });
+  res.status(200).json({ message: "Profile updated successfully", user: updatedUser });
 });
 
 module.exports.logoutUser = asyncHandler(async (req, res) => {
-  res.clearCookie("token");
   const token = req.cookies.token || req.headers.token;
+  res.clearCookie("token");
 
-  await blacklistTokenModel.create({ token });
+  if (token) {
+    await blacklistTokenModel.create({ token });
+    await supabase.auth.admin.signOut(token);
+  }
 
   res.status(200).json({ message: "Logged out successfully" });
 });
@@ -150,36 +123,20 @@ module.exports.resetPassword = asyncHandler(async (req, res) => {
   }
 
   const { token, password } = req.body;
-  let payload;
 
-  try {
-    payload = jwt.verify(token, process.env.JWT_SECRET);
-  } catch (err) {
-    if (err.name === "TokenExpiredError") {
-      return res.status(400).json({
-        message:
-          "This password reset link has expired or is no longer valid. Please request a new one to continue",
-      });
-    } else {
-      return res.status(400).json({
-        message:
-          "The password reset link is invalid or has already been used. Please request a new one to proceed",
-        error: err,
-      });
-    }
+  const { data: { user }, error } = await supabase.auth.getUser(token);
+  if (error || !user) {
+    return res.status(400).json({
+      message: "This password reset link is invalid or has expired. Please request a new one.",
+    });
   }
 
-  const user = await userModel.findById(payload.id);
-  if (!user)
-    return res.status(404).json({
-      message: "User not found. Please check your credentials and try again",
-    });
-
-  user.password = await userModel.hashPassword(password);
-  await user.save();
+  const { error: updateError } = await supabase.auth.admin.updateUserById(user.id, { password });
+  if (updateError) {
+    return res.status(500).json({ message: "Failed to reset password. Please try again." });
+  }
 
   res.status(200).json({
-    message:
-      "Your password has been successfully reset. You can now log in with your new credentials",
+    message: "Your password has been successfully reset. You can now log in with your new credentials.",
   });
 });
