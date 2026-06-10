@@ -16,28 +16,35 @@ module.exports.getAddressCoordinate = async (address) => {
 module.exports.getDistanceTime = async (origin, destination) => {
   const url = `https://maps.googleapis.com/maps/api/distancematrix/json?origins=${encodeURIComponent(origin)}&destinations=${encodeURIComponent(destination)}&key=${apiKey()}`;
   const response = await axios.get(url);
+  console.log('[Maps] distancematrix status:', response.data.status, '| element:', response.data.rows?.[0]?.elements?.[0]?.status);
   if (response.data.status === 'OK') {
     const el = response.data.rows[0].elements[0];
-    if (el.status === 'ZERO_RESULTS') throw new Error('No routes found');
+    if (el.status === 'ZERO_RESULTS' || el.status === 'NOT_FOUND') throw new Error('No routes found between these locations');
     return el;
   }
-  throw new Error('Unable to fetch distance and time');
+  throw new Error(`Unable to fetch distance and time (${response.data.status})`);
 };
 
 module.exports.getAutoCompleteSuggestions = async (input) => {
   const url = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(input)}&key=${apiKey()}`;
   const response = await axios.get(url);
-  if (response.data.status === 'OK') {
-    return response.data.predictions.map((p) => p.description).filter(Boolean);
+  console.log('[Maps] autocomplete status:', response.data.status);
+  if (response.data.status === 'OK' || response.data.status === 'ZERO_RESULTS') {
+    return (response.data.predictions || []).map((p) => p.description).filter(Boolean);
   }
-  throw new Error('Unable to fetch suggestions');
+  throw new Error(`Unable to fetch suggestions (${response.data.status})`);
 };
 
 module.exports.getAddressFromCoordinates = async (lat, lng) => {
   const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${apiKey()}`;
   const response = await axios.get(url);
+  console.log('[Maps] reverse geocode status:', response.data.status);
   if (response.data.status === 'OK' && response.data.results.length > 0) {
-    return response.data.results[0].formatted_address;
+    // Prefer a result with a real street address over a Plus Code
+    const best = response.data.results.find(r =>
+      r.types.some(t => ['street_address', 'route', 'neighborhood', 'locality'].includes(t))
+    ) || response.data.results[0];
+    return best.formatted_address;
   }
   throw new Error('Unable to reverse geocode coordinates');
 };
