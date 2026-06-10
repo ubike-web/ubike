@@ -1,1 +1,6 @@
 tasks.md
+node_modules/
+.env
+dist/
+*.log
+.DS_Store

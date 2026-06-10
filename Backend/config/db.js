@@ -1,19 +1,11 @@
-const mongoose = require("mongoose");
+const supabase = require('./supabase');
 
-let MONGO_DB = {
-  production: { url: process.env.MONGODB_PROD_URL, type: "Atlas" },
-  development: { url: process.env.MONGODB_DEV_URL, type: "Compass" },
-};
-
-let environment = process.env.ENVIRONMENT;
-
-mongoose
-  .connect(MONGO_DB[environment].url)
-  .then(() => {
-    console.log("Connected to Mongo DB", MONGO_DB[environment].type);
-  })
-  .catch(() => {
-    console.log("Failed to connect to MongoDB");
+supabase
+  .from('qr_users')
+  .select('id', { count: 'exact', head: true })
+  .then(({ error }) => {
+    if (error) console.log('[DB] Supabase connection failed:', error.message);
+    else console.log('[DB] Connected to Supabase');
   });
 
-module.exports = mongoose.connection;
+module.exports = supabase;

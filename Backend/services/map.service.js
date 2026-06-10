@@ -1,95 +1,67 @@
-const axios = require("axios");
-const captainModel = require("../models/captain.model");
+const axios = require('axios');
+const supabase = require('../config/supabase');
+
+const apiKey = () => process.env.GOOGLE_MAPS_API;
 
 module.exports.getAddressCoordinate = async (address) => {
-  const apiKey = process.env.GOOGLE_MAPS_API;
-  const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(
-    address
-  )}&key=${apiKey}`;
-
-  try {
-    const response = await axios.get(url);
-    if (response.data.status === "OK") {
-      const location = response.data.results[0].geometry.location;
-      return {
-        ltd: location.lat,
-        lng: location.lng,
-      };
-    } else {
-      throw new Error("Unable to fetch coordinates");
-    }
-  } catch (error) {
-    console.error(error);
-    throw error;
+  const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&key=${apiKey()}`;
+  const response = await axios.get(url);
+  if (response.data.status === 'OK') {
+    const loc = response.data.results[0].geometry.location;
+    return { ltd: loc.lat, lng: loc.lng };
   }
+  throw new Error('Unable to fetch coordinates');
 };
 
 module.exports.getDistanceTime = async (origin, destination) => {
-  if (!origin || !destination) {
-    throw new Error("Origin and destination are required");
+  const url = `https://maps.googleapis.com/maps/api/distancematrix/json?origins=${encodeURIComponent(origin)}&destinations=${encodeURIComponent(destination)}&key=${apiKey()}`;
+  const response = await axios.get(url);
+  if (response.data.status === 'OK') {
+    const el = response.data.rows[0].elements[0];
+    if (el.status === 'ZERO_RESULTS') throw new Error('No routes found');
+    return el;
   }
-  const apiKey = process.env.GOOGLE_MAPS_API;
-
-  const url = `https://maps.googleapis.com/maps/api/distancematrix/json?origins=${encodeURIComponent(
-    origin
-  )}&destinations=${encodeURIComponent(destination)}&key=${apiKey}`;
-
-  try {
-    const response = await axios.get(url);
-    if (response.data.status === "OK") {
-      if (response.data.rows[0].elements[0].status === "ZERO_RESULTS") {
-        throw new Error("No routes found");
-      }
-
-      return response.data.rows[0].elements[0];
-    } else {
-      throw new Error("Unable to fetch distance and time");
-    }
-  } catch (err) {
-    console.error(err);
-    throw err;
-  }
+  throw new Error('Unable to fetch distance and time');
 };
 
 module.exports.getAutoCompleteSuggestions = async (input) => {
-  if (!input) {
-    throw new Error("query is required");
+  const url = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(input)}&key=${apiKey()}`;
+  const response = await axios.get(url);
+  if (response.data.status === 'OK') {
+    return response.data.predictions.map((p) => p.description).filter(Boolean);
   }
-
-  const apiKey = process.env.GOOGLE_MAPS_API;
-  const url = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(
-    input
-  )}&key=${apiKey}`;
-
-  try {
-    const response = await axios.get(url);
-    if (response.data.status === "OK") {
-      return response.data.predictions
-        .map((prediction) => prediction.description)
-        .filter((value) => value);
-    } else {
-      throw new Error("Unable to fetch suggestions");
-    }
-  } catch (err) {
-    console.log(err.message);
-    throw err;
-  }
+  throw new Error('Unable to fetch suggestions');
 };
 
 module.exports.getCaptainsInTheRadius = async (ltd, lng, radius, vehicleType) => {
-  // radius in km
-  
-  try {
-    const captains = await captainModel.find({
-      location: {
-        $geoWithin: {
-          $centerSphere: [[lng, ltd], radius / 6371],
-        },
-      },
-      "vehicle.type": vehicleType,
-    });
-    return captains;
-  } catch (error) {
-    throw new Error("Error in getting captain in radius: " + error.message);
+  // Haversine distance in SQL — no PostGIS needed
+  const { data, error } = await supabase.rpc('qr_captains_in_radius', {
+    p_lat: ltd,
+    p_lng: lng,
+    p_radius_km: radius,
+    p_vehicle_type: vehicleType,
+  });
+
+  if (error) {
+    // Fallback: return all active captains of this type if RPC not yet deployed
+    console.error('[Maps] RPC error, using fallback:', error.message);
+    const { data: fallback } = await supabase
+      .from('qr_captains')
+      .select('*')
+      .eq('vehicle_type', vehicleType)
+      .eq('status', 'active');
+    return (fallback || []).map(enrichCaptain);
   }
+
+  return (data || []).map(enrichCaptain);
 };
+
+function enrichCaptain(c) {
+  return {
+    ...c,
+    _id: c.id,
+    fullname: { firstname: c.firstname, lastname: c.lastname || '' },
+    socketId: c.socket_id || '',
+    vehicle: { color: c.vehicle_color, number: c.vehicle_number, capacity: c.vehicle_capacity, type: c.vehicle_type },
+  };
+}

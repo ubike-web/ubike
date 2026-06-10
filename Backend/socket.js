@@ -1,89 +1,64 @@
-const moment = require("moment-timezone");
-const { Server } = require("socket.io");
-const userModel = require("./models/user.model");
-const rideModel = require("./models/ride.model");
-const captainModel = require("./models/captain.model");
-const frontendLogModel = require("./models/frontend-log.model");
+const { Server } = require('socket.io');
+const supabase = require('./config/supabase');
 
 let io;
 
 function initializeSocket(server) {
   io = new Server(server, {
-    cors: {
-      origin: "*",
-      methods: ["GET", "POST"],
-    },
+    cors: { origin: '*', methods: ['GET', 'POST'] },
   });
 
-  io.on("connection", (socket) => {
+  io.on('connection', (socket) => {
     console.log(`Client connected: ${socket.id}`);
 
-    if (process.env.ENVIRONMENT == "production") {
-      socket.on("log", async (log) => {
-        log.formattedTimestamp = moment().tz("Asia/Kolkata").format("MMM DD hh:mm:ss A");
-        try {
-          await frontendLogModel.create(log);
-        } catch (error) {
-          console.log("Error sending logs...");
-        }
-      });
-    }
-
-    socket.on("join", async (data) => {
-      const { userId, userType } = data;
-      console.log(userType + " connected: " + userId);
-      if (userType === "user") {
-        await userModel.findByIdAndUpdate(userId, { socketId: socket.id });
-      } else if (userType === "captain") {
-        await captainModel.findByIdAndUpdate(userId, { socketId: socket.id });
-      }
+    socket.on('join', async ({ userId, userType }) => {
+      console.log(`${userType} connected: ${userId}`);
+      const table = userType === 'user' ? 'qr_users' : 'qr_captains';
+      await supabase.from(table).update({ socket_id: socket.id }).eq('id', userId);
     });
 
-    socket.on("update-location-captain", async (data) => {
-      const { userId, location } = data;
-
-      if (!location || !location.ltd || !location.lng) {
-        return socket.emit("error", { message: "Invalid location data" });
+    socket.on('update-location-captain', async ({ userId, location }) => {
+      if (!location?.ltd || !location?.lng) {
+        return socket.emit('error', { message: 'Invalid location data' });
       }
-      await captainModel.findByIdAndUpdate(userId, {
-        location: {
-          type: "Point",
-          coordinates: [location.lng, location.ltd],
-        },
-      });
+      await supabase.from('qr_captains').update({
+        location_lat: location.ltd,
+        location_lng: location.lng,
+        updated_at: new Date().toISOString(),
+      }).eq('id', userId);
     });
 
-    socket.on("join-room", (roomId) => {
+    socket.on('join-room', (roomId) => {
       socket.join(roomId);
       console.log(`${socket.id} joined room: ${roomId}`);
     });
 
-    socket.on("message", async ({ rideId, msg, userType, time }) => {
-      const date = moment().tz("Asia/Kolkata").format("MMM DD");
-      socket.to(rideId).emit("receiveMessage", { msg, by: userType, time });
+    socket.on('message', async ({ rideId, msg, userType, time }) => {
+      socket.to(rideId).emit('receiveMessage', { msg, by: userType, time });
       try {
-        const ride = await rideModel.findOne({ _id: rideId });
-        ride.messages.push({
-          msg: msg,
-          by: userType,
-          time: time,
-          date: date,
-          timestamp: new Date(),
-        });
-        await ride.save();
-      } catch (error) {
-        console.log("Error saving message: ", error);
+        const { data: ride } = await supabase.from('qr_rides').select('messages').eq('id', rideId).single();
+        if (ride) {
+          const messages = Array.isArray(ride.messages) ? ride.messages : [];
+          messages.push({ msg, by: userType, time, timestamp: new Date().toISOString() });
+          await supabase.from('qr_rides').update({ messages }).eq('id', rideId);
+        }
+      } catch (err) {
+        console.error('Error saving message:', err);
       }
+    });
+
+    socket.on('disconnect', () => {
+      console.log(`Client disconnected: ${socket.id}`);
     });
   });
 }
 
 const sendMessageToSocketId = (socketId, messageObject) => {
   if (io) {
-    console.log("message sent to: ", socketId);
+    console.log('message sent to:', socketId);
     io.to(socketId).emit(messageObject.event, messageObject.data);
   } else {
-    console.log("Socket.io not initialized.");
+    console.log('Socket.io not initialized.');
   }
 };
 
