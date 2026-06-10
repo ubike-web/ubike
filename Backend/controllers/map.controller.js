@@ -35,6 +35,17 @@ module.exports.getDistanceTime = async (req, res) => {
   }
 };
 
+module.exports.reverseGeocode = async (req, res) => {
+  const { lat, lng } = req.query;
+  if (!lat || !lng) return res.status(400).json({ message: "lat and lng are required" });
+  try {
+    const address = await mapService.getAddressFromCoordinates(lat, lng);
+    res.status(200).json({ address });
+  } catch (err) {
+    res.status(404).json({ message: "Address not found" });
+  }
+};
+
 module.exports.getAutoCompleteSuggestions = async (req, res) => {
   try {
     const errors = validationResult(req);

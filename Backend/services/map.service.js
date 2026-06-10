@@ -33,6 +33,15 @@ module.exports.getAutoCompleteSuggestions = async (input) => {
   throw new Error('Unable to fetch suggestions');
 };
 
+module.exports.getAddressFromCoordinates = async (lat, lng) => {
+  const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${apiKey()}`;
+  const response = await axios.get(url);
+  if (response.data.status === 'OK' && response.data.results.length > 0) {
+    return response.data.results[0].formatted_address;
+  }
+  throw new Error('Unable to reverse geocode coordinates');
+};
+
 module.exports.getCaptainsInTheRadius = async (ltd, lng, radius, vehicleType) => {
   // Haversine distance in SQL — no PostGIS needed
   const { data, error } = await supabase.rpc('qr_captains_in_radius', {

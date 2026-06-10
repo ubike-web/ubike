@@ -12,29 +12,29 @@ import axios from "axios";
 import debounce from "lodash.debounce";
 import { SocketDataContext } from "../contexts/SocketContext";
 import Console from "../utils/console";
+import { LocateFixed } from "lucide-react";
 
 function UserHomeScreen() {
-  const token = localStorage.getItem("token"); // this token is in use
+  const token = localStorage.getItem("token");
   const { socket } = useContext(SocketDataContext);
   const { user } = useUser();
   const [messages, setMessages] = useState(
     JSON.parse(localStorage.getItem("messages")) || []
   );
   const [loading, setLoading] = useState(false);
+  const [searchError, setSearchError] = useState("");
   const [selectedInput, setSelectedInput] = useState("pickup");
   const [locationSuggestion, setLocationSuggestion] = useState([]);
   const [mapLocation, setMapLocation] = useState("");
   const [rideCreated, setRideCreated] = useState(false);
+  const [locating, setLocating] = useState(false);
+  const [locationDenied, setLocationDenied] = useState(false);
 
   // Ride details
   const [pickupLocation, setPickupLocation] = useState("");
   const [destinationLocation, setDestinationLocation] = useState("");
   const [selectedVehicle, setSelectedVehicle] = useState("car");
-  const [fare, setFare] = useState({
-    auto: 0,
-    car: 0,
-    bike: 0,
-  });
+  const [fare, setFare] = useState({ auto: 0, car: 0, bike: 0 });
   const [confirmedRideData, setConfirmedRideData] = useState(null);
   const rideTimeout = useRef(null);
 
@@ -48,15 +48,9 @@ function UserHomeScreen() {
       if (inputValue.length >= 3) {
         try {
           const response = await axios.get(
-            `${import.meta.env.VITE_SERVER_URL
-            }/map/get-suggestions?input=${inputValue}`,
-            {
-              headers: {
-                token: token,
-              },
-            }
+            `${import.meta.env.VITE_SERVER_URL}/map/get-suggestions?input=${inputValue}`,
+            { headers: { token } }
           );
-          Console.log(response.data);
           setLocationSuggestion(response.data);
         } catch (error) {
           Console.error(error);
@@ -69,46 +63,84 @@ function UserHomeScreen() {
   const onChangeHandler = (e) => {
     setSelectedInput(e.target.id);
     const value = e.target.value;
-    if (e.target.id == "pickup") {
-      setPickupLocation(value);
-    } else if (e.target.id == "destination") {
-      setDestinationLocation(value);
-    }
+    if (e.target.id === "pickup") setPickupLocation(value);
+    else if (e.target.id === "destination") setDestinationLocation(value);
 
-    if (import.meta.env.VITE_ENVIRONMENT === "production") {
+    if (value.length >= 3) {
       handleLocationChange(value, token);
-    }
-
-    if (e.target.value.length < 3) {
+    } else {
       setLocationSuggestion([]);
     }
   };
 
-  const getDistanceAndFare = async (pickupLocation, destinationLocation) => {
-    Console.log(pickupLocation, destinationLocation);
+  const handleSuggestionSelect = (suggestion, inputField) => {
+    if (inputField === "pickup") {
+      setPickupLocation(suggestion);
+    } else {
+      setDestinationLocation(suggestion);
+    }
+    setLocationSuggestion([]);
+
+    // Auto-advance when both fields are filled via suggestion
+    const pickup = inputField === "pickup" ? suggestion : pickupLocation;
+    const destination = inputField === "destination" ? suggestion : destinationLocation;
+    if (pickup.length > 2 && destination.length > 2) {
+      getDistanceAndFare(pickup, destination);
+    }
+  };
+
+  const detectLocation = () => {
+    if (!navigator.geolocation) return;
+    setLocating(true);
+    setLocationDenied(false);
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const { latitude, longitude } = position.coords;
+        setMapLocation(
+          `https://www.google.com/maps?q=${latitude},${longitude}&output=embed`
+        );
+        try {
+          const res = await axios.get(
+            `${import.meta.env.VITE_SERVER_URL}/map/reverse-geocode?lat=${latitude}&lng=${longitude}`
+          );
+          setPickupLocation(res.data.address);
+        } catch {
+          setPickupLocation(`${latitude.toFixed(5)}, ${longitude.toFixed(5)}`);
+        } finally {
+          setLocating(false);
+        }
+      },
+      (error) => {
+        setLocating(false);
+        if (error.code === error.PERMISSION_DENIED) {
+          setLocationDenied(true);
+        }
+        Console.error("Geolocation error:", error);
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  };
+
+  const getDistanceAndFare = async (pickup, destination) => {
+    setSearchError("");
     try {
       setLoading(true);
       setMapLocation(
-        `https://www.google.com/maps?q=${pickupLocation} to ${destinationLocation}&output=embed`
+        `https://www.google.com/maps?q=${pickup} to ${destination}&output=embed`
       );
       const response = await axios.get(
-        `${import.meta.env.VITE_SERVER_URL
-        }/ride/get-fare?pickup=${pickupLocation}&destination=${destinationLocation}`,
-        {
-          headers: {
-            token: token,
-          },
-        }
+        `${import.meta.env.VITE_SERVER_URL}/ride/get-fare?pickup=${encodeURIComponent(pickup)}&destination=${encodeURIComponent(destination)}`,
+        { headers: { token } }
       );
-      Console.log(response);
       setFare(response.data.fare);
-
       setShowFindTripPanel(false);
       setShowSelectVehiclePanel(true);
       setLocationSuggestion([]);
-      setLoading(false);
     } catch (error) {
-      Console.log(error);
+      Console.error(error);
+      const msg = error.response?.data?.message || "Could not calculate fare. Check your locations and try again.";
+      setSearchError(msg);
+    } finally {
       setLoading(false);
     }
   };
@@ -118,37 +150,25 @@ function UserHomeScreen() {
       setLoading(true);
       const response = await axios.post(
         `${import.meta.env.VITE_SERVER_URL}/ride/create`,
-        {
-          pickup: pickupLocation,
-          destination: destinationLocation,
-          vehicleType: selectedVehicle,
-        },
-        {
-          headers: {
-            token: token,
-          },
-        }
+        { pickup: pickupLocation, destination: destinationLocation, vehicleType: selectedVehicle },
+        { headers: { token } }
       );
-      Console.log(response);
       const rideData = {
         pickup: pickupLocation,
         destination: destinationLocation,
         vehicleType: selectedVehicle,
-        fare: fare,
-        confirmedRideData: confirmedRideData,
+        fare,
+        confirmedRideData,
         _id: response.data._id,
       };
       localStorage.setItem("rideDetails", JSON.stringify(rideData));
-      setLoading(false);
       setRideCreated(true);
-
-      // Automatically cancel the ride after 1.5 minutes
       rideTimeout.current = setTimeout(() => {
         cancelRide();
       }, import.meta.env.VITE_RIDE_TIMEOUT);
-      
     } catch (error) {
-      Console.log(error);
+      Console.error(error);
+    } finally {
       setLoading(false);
     }
   };
@@ -158,98 +178,47 @@ function UserHomeScreen() {
     try {
       setLoading(true);
       await axios.get(
-        `${import.meta.env.VITE_SERVER_URL}/ride/cancel?rideId=${rideDetails._id || rideDetails.confirmedRideData._id
-        }`,
-        {
-          pickup: pickupLocation,
-          destination: destinationLocation,
-          vehicleType: selectedVehicle,
-        },
-        {
-          headers: {
-            token: token,
-          },
-        }
+        `${import.meta.env.VITE_SERVER_URL}/ride/cancel?rideId=${rideDetails._id || rideDetails.confirmedRideData._id}`,
+        { headers: { token } }
       );
-      setLoading(false);
-      updateLocation();
       setShowRideDetailsPanel(false);
       setShowSelectVehiclePanel(false);
       setShowFindTripPanel(true);
       setDefaults();
-      localStorage.removeItem("rideDetails");
-      localStorage.removeItem("panelDetails");
-      localStorage.removeItem("messages");
-      localStorage.removeItem("showPanel");
-      localStorage.removeItem("showBtn");
+      detectLocation();
+      ["rideDetails", "panelDetails", "messages", "showPanel", "showBtn"].forEach((k) =>
+        localStorage.removeItem(k)
+      );
     } catch (error) {
-      Console.log(error);
+      Console.error(error);
+    } finally {
       setLoading(false);
     }
   };
-  // Set ride details to default values
+
   const setDefaults = () => {
     setPickupLocation("");
     setDestinationLocation("");
     setSelectedVehicle("car");
-    setFare({
-      auto: 0,
-      car: 0,
-      bike: 0,
-    });
+    setFare({ auto: 0, car: 0, bike: 0 });
     setConfirmedRideData(null);
     setRideCreated(false);
+    setSearchError("");
   };
 
-  // Update Location
-  const updateLocation = () => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          setMapLocation(
-            `https://www.google.com/maps?q=${position.coords.latitude},${position.coords.longitude}&output=embed`
-          );
-        },
-        (error) => {
-          console.error("Error fetching position:", error);
-          switch (error.code) {
-            case error.PERMISSION_DENIED:
-              console.error("User denied the request for Geolocation.");
-              break;
-            case error.POSITION_UNAVAILABLE:
-              console.error("Location information is unavailable.");
-              break;
-            case error.TIMEOUT:
-              console.error("The request to get user location timed out.");
-              break;
-            default:
-              console.error("An unknown error occurred.");
-          }
-        }
-      );
-    }
-  };
-
-  // Update Location
+  // Auto-detect location on mount
   useEffect(() => {
-    updateLocation();
+    detectLocation();
   }, []);
 
   // Socket Events
   useEffect(() => {
     if (user._id) {
-      socket.emit("join", {
-        userId: user._id,
-        userType: "user",
-      });
+      socket.emit("join", { userId: user._id, userType: "user" });
     }
 
     socket.on("ride-confirmed", (data) => {
-      Console.log("Clearing Timeout", rideTimeout);
       clearTimeout(rideTimeout.current);
-      Console.log("Cleared Timeout");
-      Console.log("Ride Confirmed");
-      Console.log(data.captain.location);
       setMapLocation(
         `https://www.google.com/maps?q=${data.captain.location.coordinates[1]},${data.captain.location.coordinates[0]} to ${pickupLocation}&output=embed`
       );
@@ -257,41 +226,26 @@ function UserHomeScreen() {
     });
 
     socket.on("ride-started", (data) => {
-      Console.log("Ride started");
       setMapLocation(
         `https://www.google.com/maps?q=${data.pickup} to ${data.destination}&output=embed`
       );
     });
 
-    socket.on("ride-ended", (data) => {
-      Console.log("Ride Ended");
+    socket.on("ride-ended", () => {
       setShowRideDetailsPanel(false);
       setShowSelectVehiclePanel(false);
       setShowFindTripPanel(true);
       setDefaults();
       localStorage.removeItem("rideDetails");
       localStorage.removeItem("panelDetails");
-
-      if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(
-          (position) => {
-            setMapLocation(
-              `https://www.google.com/maps?q=${position.coords.latitude},${position.coords.longitude}&output=embed`
-            );
-          },
-          (error) => {
-            console.error("Error fetching position:", error);
-          }
-        );
-      }
+      detectLocation();
     });
   }, [user]);
 
-  // Get ride details
+  // Restore ride/panel state on refresh
   useEffect(() => {
     const storedRideDetails = localStorage.getItem("rideDetails");
     const storedPanelDetails = localStorage.getItem("panelDetails");
-
     if (storedRideDetails) {
       const ride = JSON.parse(storedRideDetails);
       setPickupLocation(ride.pickup);
@@ -300,7 +254,6 @@ function UserHomeScreen() {
       setFare(ride.fare);
       setConfirmedRideData(ride.confirmedRideData);
     }
-
     if (storedPanelDetails) {
       const panels = JSON.parse(storedPanelDetails);
       setShowFindTripPanel(panels.showFindTripPanel);
@@ -309,32 +262,13 @@ function UserHomeScreen() {
     }
   }, []);
 
-  // Store Ride Details
   useEffect(() => {
-    const rideData = {
-      pickup: pickupLocation,
-      destination: destinationLocation,
-      vehicleType: selectedVehicle,
-      fare: fare,
-      confirmedRideData: confirmedRideData,
-    };
+    const rideData = { pickup: pickupLocation, destination: destinationLocation, vehicleType: selectedVehicle, fare, confirmedRideData };
     localStorage.setItem("rideDetails", JSON.stringify(rideData));
-  }, [
-    pickupLocation,
-    destinationLocation,
-    selectedVehicle,
-    fare,
-    confirmedRideData,
-  ]);
+  }, [pickupLocation, destinationLocation, selectedVehicle, fare, confirmedRideData]);
 
-  // Store panel information
   useEffect(() => {
-    const panelDetails = {
-      showFindTripPanel,
-      showSelectVehiclePanel,
-      showRideDetailsPanel,
-    };
-    localStorage.setItem("panelDetails", JSON.stringify(panelDetails));
+    localStorage.setItem("panelDetails", JSON.stringify({ showFindTripPanel, showSelectVehiclePanel, showRideDetailsPanel }));
   }, [showFindTripPanel, showSelectVehiclePanel, showRideDetailsPanel]);
 
   useEffect(() => {
@@ -343,14 +277,10 @@ function UserHomeScreen() {
 
   useEffect(() => {
     socket.emit("join-room", confirmedRideData?._id);
-
     socket.on("receiveMessage", (msg) => {
       setMessages((prev) => [...prev, { msg, by: "other" }]);
     });
-
-    return () => {
-      socket.off("receiveMessage");
-    };
+    return () => socket.off("receiveMessage");
   }, [confirmedRideData]);
 
   return (
@@ -366,51 +296,72 @@ function UserHomeScreen() {
         loading="lazy"
         referrerPolicy="no-referrer-when-downgrade"
       ></iframe>
-      {/* Find a trip component */}
+
       {showFindTripPanel && (
-        <div className="absolute b-0 flex flex-col justify-start p-4 pb-2 gap-4 rounded-b-lg bg-white h-fit w-full">
+        <div className="absolute b-0 flex flex-col justify-start p-4 pb-2 gap-3 rounded-b-lg bg-white h-fit w-full">
           <h1 className="text-2xl font-semibold">Find a trip</h1>
+
           <div className="flex items-center relative w-full h-fit">
             <div className="h-3/5 w-[3px] flex flex-col items-center justify-between bg-black rounded-full absolute mx-5">
-              <div className="w-2 h-2 rounded-full border-[3px]  bg-white border-black"></div>
-              <div className="w-2 h-2 rounded-sm border-[3px]  bg-white border-black"></div>
+              <div className="w-2 h-2 rounded-full border-[3px] bg-white border-black"></div>
+              <div className="w-2 h-2 rounded-sm border-[3px] bg-white border-black"></div>
             </div>
-            <div>
-              <input
-                id="pickup"
-                placeholder="Add a pick-up location"
-                className="w-full bg-zinc-100 pl-10 pr-4 py-3 rounded-lg outline-black text-sm mb-2 truncate"
-                value={pickupLocation}
-                onChange={onChangeHandler}
-                autoComplete="off"
-              />
+            <div className="w-full">
+              <div className="relative">
+                <input
+                  id="pickup"
+                  placeholder="Add a pick-up location"
+                  className="w-full bg-zinc-100 pl-10 pr-10 py-3 rounded-lg outline-black text-sm mb-2 truncate"
+                  value={pickupLocation}
+                  onChange={onChangeHandler}
+                  onFocus={() => setSelectedInput("pickup")}
+                  autoComplete="off"
+                />
+                <button
+                  onClick={detectLocation}
+                  className="absolute right-2 top-3 text-gray-400 hover:text-black"
+                  title="Use my location"
+                >
+                  <LocateFixed size={18} className={locating ? "animate-pulse text-blue-500" : ""} />
+                </button>
+              </div>
               <input
                 id="destination"
                 placeholder="Add a drop-off location"
                 className="w-full bg-zinc-100 pl-10 pr-4 py-3 rounded-lg outline-black text-sm truncate"
                 value={destinationLocation}
                 onChange={onChangeHandler}
+                onFocus={() => setSelectedInput("destination")}
                 autoComplete="off"
               />
             </div>
           </div>
+
+          {locationDenied && (
+            <p className="text-xs text-amber-600 bg-amber-50 rounded px-3 py-2">
+              Location access denied. Please allow location in your browser settings, or type your pickup address manually.
+            </p>
+          )}
+
+          {searchError && (
+            <p className="text-xs text-red-500 bg-red-50 rounded px-3 py-2">{searchError}</p>
+          )}
+
           {pickupLocation.length > 2 && destinationLocation.length > 2 && (
             <Button
               title={"Search"}
               loading={loading}
-              fun={() => {
-                getDistanceAndFare(pickupLocation, destinationLocation);
-              }}
+              fun={() => getDistanceAndFare(pickupLocation, destinationLocation)}
             />
           )}
 
-          <div className="w-full h-full overflow-y-scroll ">
+          <div className="w-full max-h-48 overflow-y-auto">
             {locationSuggestion.length > 0 && (
               <LocationSuggestions
                 suggestions={locationSuggestion}
                 setSuggestions={setLocationSuggestion}
-                setPickupLocation={setPickupLocation}
-                setDestinationLocation={setDestinationLocation}
+                setPickupLocation={(s) => handleSuggestionSelect(s, "pickup")}
+                setDestinationLocation={(s) => handleSuggestionSelect(s, "destination")}
                 input={selectedInput}
               />
             )}
@@ -418,7 +369,6 @@ function UserHomeScreen() {
         </div>
       )}
 
-      {/* Select Vehicle Panel */}
       <SelectVehicle
         selectedVehicle={setSelectedVehicle}
         showPanel={showSelectVehiclePanel}
@@ -428,7 +378,6 @@ function UserHomeScreen() {
         fare={fare}
       />
 
-      {/* Ride Details Panel */}
       <RideDetails
         pickupLocation={pickupLocation}
         destinationLocation={destinationLocation}
