@@ -51,7 +51,7 @@ function WalletScreen() {
     try {
       await axios.post(
         `${import.meta.env.VITE_SERVER_URL}/payment/initialize`,
-        { amount, email: user.email, description: "QuickRide wallet top-up" },
+        { amount, email: user.email, description: "U-bike wallet top-up" },
         { headers: { token } }
       );
 

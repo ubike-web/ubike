@@ -161,7 +161,7 @@ function UserHomeScreen() {
     try {
       const { data } = await axios.post(
         `${import.meta.env.VITE_SERVER_URL}/payment/initialize`,
-        { amount: halfFare, email: user.email, description: `QuickRide first payment – ${pickupLocation} to ${destinationLocation}` },
+        { amount: halfFare, email: user.email, description: `U-bike first payment – ${pickupLocation} to ${destinationLocation}` },
         { headers: { token } }
       );
 
@@ -211,7 +211,7 @@ function UserHomeScreen() {
     try {
       await axios.post(
         `${import.meta.env.VITE_SERVER_URL}/payment/initialize`,
-        { amount: halfFare, email: user.email, description: `QuickRide second payment – ${pickupLocation} to ${destinationLocation}` },
+        { amount: halfFare, email: user.email, description: `U-bike second payment – ${pickupLocation} to ${destinationLocation}` },
         { headers: { token } }
       );
 
