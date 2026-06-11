@@ -23,7 +23,7 @@ function GetStarted() {
       style={{ backgroundImage: `url(${background})` }}
     >
       <img
-        className="h-20 object-contain m-4 self-start"
+        className="h-[120px] object-contain m-4 self-start"
         src={logo}
         alt="Logo"
       />
