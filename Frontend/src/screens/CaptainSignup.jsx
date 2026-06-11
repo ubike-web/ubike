@@ -5,7 +5,6 @@ import { Button, Heading, Input } from "../components";
 import axios from "axios";
 import { ArrowLeft, ChevronRight, Upload, X } from "lucide-react";
 import Console from "../utils/console";
-import CameraCapture from "../components/CameraCapture";
 
 function FilePicker({ label, hint, value, onChange }) {
   const ref = useRef();
@@ -54,7 +53,6 @@ function CaptainSignup() {
   const [loading, setLoading] = useState(false);
   const [nationalIdPhoto, setNationalIdPhoto] = useState(null);
   const [licensePhoto, setLicensePhoto] = useState(null);
-  const [selfiePhoto, setSelfiePhoto] = useState(null); // base64 dataUrl from CameraCapture
 
   const { register, formState: { errors }, getValues } = useForm();
   const navigation = useNavigate();
@@ -71,7 +69,7 @@ function CaptainSignup() {
     const s = document.createElement('script');
     s.src = 'https://js.paystack.co/v1/inline.js';
     s.onload = resolve;
-    s.onerror = () => resolve(); // fail gracefully
+    s.onerror = () => resolve();
     document.head.appendChild(s);
   });
 
@@ -101,7 +99,6 @@ function CaptainSignup() {
           licenseNumber: data.licenseNumber,
           nationalIdPhoto: nationalIdBase64,
           licensePhoto: licenseBase64,
-          selfiePhoto,
         },
         paymentReference,
       };
@@ -123,9 +120,8 @@ function CaptainSignup() {
   };
 
   const handlePayAndRegister = async () => {
-    if (!nationalIdPhoto) { setResponseError("Please upload National ID photo"); setPanel(3); return; }
-    if (!licensePhoto) { setResponseError("Please upload Driving Licence photo"); setPanel(3); return; }
-    if (!selfiePhoto) { setResponseError("Please complete face verification first"); return; }
+    if (!nationalIdPhoto) { setResponseError("Please upload a photo of your National ID"); return; }
+    if (!licensePhoto)    { setResponseError("Please upload a photo of your Driving Licence"); return; }
 
     const data = getValues();
     if (!data.firstname || !data.email || !data.password || !data.phone) {
@@ -146,7 +142,7 @@ function CaptainSignup() {
     window.PaystackPop.setup({
       key: import.meta.env.VITE_PAYSTACK_PUBLIC_KEY,
       email: data.email,
-      amount: 200000, // KES 2000 in kobo (1 KES = 100 kobo)
+      amount: 200000,
       currency: 'KES',
       metadata: { type: 'captain_registration', name: `${data.firstname} ${data.lastname}` },
       callback: (response) => {
@@ -170,17 +166,17 @@ function CaptainSignup() {
 
         {/* Step indicator */}
         <div className="flex items-center gap-2 mb-6">
-          {[1, 2, 3, 4].map((step) => (
+          {[1, 2, 3].map((step) => (
             <div key={step} className="flex items-center gap-2">
               <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all
                 ${panel >= step ? "bg-black text-white" : "bg-gray-200 text-gray-500"}`}>
                 {step}
               </div>
-              {step < 4 && <div className={`h-0.5 w-6 ${panel > step ? "bg-black" : "bg-gray-200"}`} />}
+              {step < 3 && <div className={`h-0.5 w-8 ${panel > step ? "bg-black" : "bg-gray-200"}`} />}
             </div>
           ))}
           <span className="ml-2 text-xs text-gray-500">
-            {panel === 1 ? "Personal Info" : panel === 2 ? "Vehicle Details" : panel === 3 ? "Documents" : "Face Verification"}
+            {panel === 1 ? "Personal Info" : panel === 2 ? "Vehicle Details" : "Documents"}
           </span>
         </div>
 
@@ -231,7 +227,7 @@ function CaptainSignup() {
             </>
           )}
 
-          {/* ── Panel 3: Documents ── */}
+          {/* ── Panel 3: Documents & Payment ── */}
           {panel === 3 && (
             <>
               <ArrowLeft onClick={() => setPanel(2)} className="cursor-pointer -ml-1 mb-4" />
@@ -256,52 +252,20 @@ function CaptainSignup() {
               />
 
               {responseError && <p className="text-sm text-center mb-4 text-red-500">{responseError}</p>}
-              <div
-                className="cursor-pointer flex justify-center items-center gap-2 py-3 font-semibold bg-black text-white w-full rounded-lg"
-                onClick={() => {
-                  if (!nationalIdPhoto) { setResponseError("Please upload a photo of your National ID"); return; }
-                  if (!licensePhoto)    { setResponseError("Please upload a photo of your Driving Licence"); return; }
-                  setResponseError("");
-                  setPanel(4);
-                }}
+
+              <button
+                type="button"
+                onClick={handlePayAndRegister}
+                disabled={loading}
+                className="w-full py-3.5 bg-black text-white rounded-xl font-semibold flex flex-col items-center justify-center disabled:opacity-60 transition mt-2"
               >
-                Next — Face Verification <ChevronRight strokeWidth={2.5} />
-              </div>
-            </>
-          )}
-
-          {/* ── Panel 4: Face Verification ── */}
-          {panel === 4 && (
-            <>
-              <ArrowLeft onClick={() => setPanel(3)} className="cursor-pointer -ml-1 mb-4" />
-              <p className="text-sm text-gray-500 mb-4">
-                Take a clear selfie so we can verify your identity. Look straight at the camera in a well-lit area.
-              </p>
-
-              <CameraCapture
-                onCapture={(dataUrl) => setSelfiePhoto(dataUrl)}
-                onError={(msg) => setResponseError(msg)}
-              />
-
-              {responseError && <p className="text-sm text-center mt-3 mb-2 text-red-500">{responseError}</p>}
-
-              {selfiePhoto && (
-                <div className="mt-4">
-                  <button
-                    type="button"
-                    onClick={handlePayAndRegister}
-                    disabled={loading}
-                    className="w-full py-3.5 bg-black text-white rounded-xl font-semibold flex flex-col items-center justify-center disabled:opacity-60 transition"
-                  >
-                    {loading ? "Processing…" : "Pay KES 2,000 & Create Account"}
-                    {!loading && (
-                      <span className="text-xs font-normal opacity-70 mt-0.5">
-                        Registration fee · Secure payment via Paystack
-                      </span>
-                    )}
-                  </button>
-                </div>
-              )}
+                {loading ? "Processing…" : "Pay KES 2,000 & Create Account"}
+                {!loading && (
+                  <span className="text-xs font-normal opacity-70 mt-0.5">
+                    Registration fee · Secure payment via Paystack
+                  </span>
+                )}
+              </button>
             </>
           )}
         </form>

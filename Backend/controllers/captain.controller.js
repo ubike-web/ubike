@@ -55,7 +55,6 @@ module.exports.registerCaptain = asyncHandler(async (req, res) => {
   if (captain) {
     let nationalIdUrl = '';
     let licenseUrl = '';
-    let selfieUrl = '';
 
     const uploadBase64 = async (dataUrl, filename) => {
       const base64 = dataUrl.replace(/^data:image\/\w+;base64,/, '');
@@ -69,7 +68,6 @@ module.exports.registerCaptain = asyncHandler(async (req, res) => {
     try {
       if (documents?.nationalIdPhoto) nationalIdUrl = await uploadBase64(documents.nationalIdPhoto, 'national_id');
       if (documents?.licensePhoto)    licenseUrl    = await uploadBase64(documents.licensePhoto,    'license');
-      if (documents?.selfiePhoto)     selfieUrl     = await uploadBase64(documents.selfiePhoto,     'selfie');
     } catch (uploadErr) {
       console.error('[KYC] Photo upload error:', uploadErr.message);
     }
@@ -80,7 +78,6 @@ module.exports.registerCaptain = asyncHandler(async (req, res) => {
       plate_number: vehicle.number,
       national_id_url: nationalIdUrl,
       license_url: licenseUrl,
-      selfie_url: selfieUrl,
       status: 'pending',
       submitted_at: new Date().toISOString(),
     }).catch((e) => console.error('[KYC] DB record error:', e.message));
@@ -98,48 +95,6 @@ module.exports.registerCaptain = asyncHandler(async (req, res) => {
   res.status(201).json({
     message: "Registration successful! Please check your email to verify your account before logging in.",
   });
-});
-
-module.exports.verifyFace = asyncHandler(async (req, res) => {
-  const { image } = req.body;
-  if (!image) return res.status(400).json({ message: "Image required", faceDetected: false });
-
-  try {
-    const base64 = image.replace(/^data:image\/\w+;base64,/, '');
-
-    const visionRes = await fetch(
-      `https://vision.googleapis.com/v1/images:annotate?key=${process.env.GOOGLE_MAPS_API}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          requests: [{
-            image: { content: base64 },
-            features: [{ type: 'FACE_DETECTION', maxResults: 5 }],
-          }],
-        }),
-      }
-    );
-
-    const visionData = await visionRes.json();
-    const faces = visionData.responses?.[0]?.faceAnnotations || [];
-
-    if (faces.length === 0) {
-      return res.json({ faceDetected: false, message: "No face detected. Please ensure your face is clearly visible and well-lit." });
-    }
-
-    const face = faces[0];
-    const blurry = face.blurredLikelihood === 'VERY_LIKELY' || face.blurredLikelihood === 'LIKELY';
-    if (blurry) {
-      return res.json({ faceDetected: false, message: "Image is blurry. Please take the photo in better lighting." });
-    }
-
-    res.json({ faceDetected: true, faceCount: faces.length });
-  } catch (err) {
-    console.error('[Vision] Face detection error:', err.message);
-    // Fail open — accept the selfie for manual review if Vision API is unavailable
-    res.json({ faceDetected: true, message: "Verification service unavailable; selfie accepted for manual review." });
-  }
 });
 
 module.exports.verifyEmail = asyncHandler(async (req, res) => {

@@ -14,8 +14,6 @@ router.post("/register",
 
 router.post("/verify-email", captainController.verifyEmail);
 
-router.post("/verify-face", captainController.verifyFace);
-
 router.post("/login", 
     body("email").isEmail().withMessage("Invalid Email"),
     captainController.loginCaptain
