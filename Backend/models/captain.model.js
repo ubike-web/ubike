@@ -42,6 +42,7 @@ function enrich(row) {
     approvalStatus: row.approval_status || 'pending',
     rejectionReason: row.rejection_reason || '',
     registrationPaymentPaid: row.registration_payment_paid || false,
+    activeMode: row.active_mode || null,
     select(_) { return this; },
     populate(_) { return this; },
 

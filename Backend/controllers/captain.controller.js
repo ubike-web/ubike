@@ -162,6 +162,27 @@ module.exports.updateCaptainProfile = asyncHandler(async (req, res) => {
   res.status(200).json({ message: "Profile updated successfully", user: updatedCaptain });
 });
 
+module.exports.setMode = asyncHandler(async (req, res) => {
+  const { mode } = req.body;
+  if (!['rides', 'errands'].includes(mode)) {
+    return res.status(400).json({ message: "Mode must be 'rides' or 'errands'" });
+  }
+
+  const vehicleType = req.captain.vehicle?.type;
+  if (mode === 'errands' && vehicleType !== 'bike') {
+    return res.status(400).json({ message: "Errands mode is only available for bike captains" });
+  }
+
+  const { error } = await supabase
+    .from('qr_captains')
+    .update({ active_mode: mode, updated_at: new Date().toISOString() })
+    .eq('id', req.captain._id);
+
+  if (error) return res.status(500).json({ message: error.message });
+
+  res.json({ message: "Mode updated", mode });
+});
+
 module.exports.logoutCaptain = asyncHandler(async (req, res) => {
   const token = req.cookies.token || req.headers.token;
   res.clearCookie("token");

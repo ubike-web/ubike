@@ -5,6 +5,7 @@ import { useCaptain } from "../contexts/CaptainContext";
 import VerifyEmail from "../components/VerifyEmail";
 import Loading from "./Loading";
 import CaptainPendingApproval from "./CaptainPendingApproval";
+import CaptainModeSelect from "./CaptainModeSelect";
 
 function CaptainProtectedWrapper({ children }) {
   const token = localStorage.getItem("token");
@@ -14,6 +15,8 @@ function CaptainProtectedWrapper({ children }) {
   const [loading, setLoading] = useState(true);
   const [isVerified, setIsVerified] = useState(null);
   const [approvalStatus, setApprovalStatus] = useState(null);
+  const [activeMode, setActiveMode] = useState(null);
+  const [vehicleType, setVehicleType] = useState(null);
 
   useEffect(() => {
     if (!token) {
@@ -32,6 +35,8 @@ function CaptainProtectedWrapper({ children }) {
           localStorage.setItem("userData", JSON.stringify({ type: "captain", data: captainData }));
           setIsVerified(captainData.emailVerified);
           setApprovalStatus(captainData.approvalStatus || "pending");
+          setActiveMode(captainData.activeMode || null);
+          setVehicleType(captainData.vehicle?.type || null);
         }
       })
       .catch(() => {
@@ -50,6 +55,13 @@ function CaptainProtectedWrapper({ children }) {
 
   if (approvalStatus === "pending" || approvalStatus === "rejected") {
     return <CaptainPendingApproval captain={captain} />;
+  }
+
+  // Approved — check if mode needs to be selected
+  // Bike captains must choose between rides or errands
+  // Car / auto captains are rides-only, skip selection
+  if (approvalStatus === "approved" && vehicleType === "bike" && !activeMode) {
+    return <CaptainModeSelect captain={captain} />;
   }
 
   return <>{children}</>;

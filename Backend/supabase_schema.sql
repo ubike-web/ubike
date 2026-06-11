@@ -48,6 +48,7 @@ ALTER TABLE qr_captains ADD COLUMN IF NOT EXISTS approval_status TEXT DEFAULT 'p
 ALTER TABLE qr_captains ADD COLUMN IF NOT EXISTS rejection_reason TEXT DEFAULT '';
 ALTER TABLE qr_captains ADD COLUMN IF NOT EXISTS registration_payment_ref TEXT DEFAULT '';
 ALTER TABLE qr_captains ADD COLUMN IF NOT EXISTS registration_payment_paid BOOLEAN DEFAULT false;
+ALTER TABLE qr_captains ADD COLUMN IF NOT EXISTS active_mode TEXT CHECK (active_mode IN ('rides','errands'));
 
 CREATE TABLE IF NOT EXISTS qr_rides (
   id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),

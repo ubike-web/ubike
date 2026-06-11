@@ -28,6 +28,12 @@ router.post("/update",
 
 router.get("/profile", authCaptain, captainController.captainProfile);
 
+router.post("/set-mode",
+  authCaptain,
+  body("mode").isIn(["rides", "errands"]).withMessage("Mode must be 'rides' or 'errands'"),
+  captainController.setMode
+);
+
 router.get("/logout", authCaptain, captainController.logoutCaptain);
 
 router.post(
