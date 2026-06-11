@@ -27,6 +27,13 @@ function enrich(row) {
       number: row.vehicle_number,
       capacity: row.vehicle_capacity,
       type: row.vehicle_type,
+      make: row.vehicle_make || '',
+      model: row.vehicle_model || '',
+      year: row.vehicle_year || '',
+    },
+    documents: {
+      nationalIdNumber: row.national_id_number || '',
+      licenseNumber: row.license_number || '',
     },
     location: {
       ltd: row.location_lat || 0,
@@ -130,6 +137,11 @@ module.exports.create = async (data) => {
     vehicle_number: data.vehicle.number,
     vehicle_capacity: data.vehicle.capacity || 1,
     vehicle_type: data.vehicle.type,
+    vehicle_make: data.vehicle.make || '',
+    vehicle_model: data.vehicle.model || '',
+    vehicle_year: data.vehicle.year ? parseInt(data.vehicle.year) : null,
+    national_id_number: data.documents?.nationalIdNumber || '',
+    license_number: data.documents?.licenseNumber || '',
     location_lat: 0,
     location_lng: 0,
   }).select().single();

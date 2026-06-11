@@ -11,17 +11,31 @@ module.exports.registerCaptain = asyncHandler(async (req, res) => {
     return res.status(400).json(errors.array());
   }
 
-  const { fullname, email, password, phone, vehicle } = req.body;
+  const { fullname, email, password, phone, vehicle, documents } = req.body;
 
   const alreadyExists = await captainModel.findOne({ email });
   if (alreadyExists) {
     return res.status(400).json({ message: "Captain already exists" });
   }
 
-  await captainService.createCaptain(
+  const captain = await captainService.createCaptain(
     fullname.firstname, fullname.lastname, email, password, phone,
-    vehicle.color, vehicle.number, vehicle.capacity, vehicle.type
+    vehicle.color, vehicle.number, vehicle.capacity, vehicle.type,
+    vehicle.make, vehicle.model, vehicle.year,
+    documents?.nationalIdNumber, documents?.licenseNumber,
   );
+
+  // Save KYC record to shared kyc_documents table for admin review
+  if (captain && (documents?.nationalIdNumber || documents?.licenseNumber)) {
+    await supabase.from('kyc_documents').upsert({
+      user_id: captain._id,
+      plate_number: vehicle.number,
+      national_id_url: documents?.nationalIdNumber || '',
+      license_url: documents?.licenseNumber || '',
+      status: 'pending',
+      submitted_at: new Date().toISOString(),
+    }).catch(() => {}); // non-fatal if kyc_documents table doesn't exist yet
+  }
 
   res.status(201).json({
     message: "Registration successful! Please check your email to verify your account before logging in.",

@@ -1,15 +1,20 @@
 const captainModel = require("../models/captain.model");
 
-module.exports.createCaptain = async (firstname, lastname, email, password, phone, color, number, capacity, type) => {
+module.exports.createCaptain = async (
+  firstname, lastname, email, password, phone,
+  color, number, capacity, type,
+  make, model, year,
+  nationalIdNumber, licenseNumber,
+) => {
   if (!firstname || !email || !password) {
     throw new Error("All fields are required");
   }
-  // Password is passed raw — Supabase Auth handles hashing
   return captainModel.create({
     fullname: { firstname, lastname },
     email,
     password,
     phone,
-    vehicle: { color, number, capacity, type },
+    vehicle: { color, number, capacity, type, make, model, year },
+    documents: { nationalIdNumber, licenseNumber },
   });
 };
