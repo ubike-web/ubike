@@ -34,7 +34,7 @@ function AdminLogin() {
         </div>
 
         <h1 className="text-2xl font-bold text-center mb-1">Admin Portal</h1>
-        <p className="text-sm text-gray-500 text-center mb-8">QuickRide — Staff Access Only</p>
+        <p className="text-sm text-gray-500 text-center mb-8">U-bike — Staff Access Only</p>
 
         <form onSubmit={handleLogin} className="space-y-4">
           <div>

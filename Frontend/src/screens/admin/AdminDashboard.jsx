@@ -61,9 +61,9 @@ function AdminDashboard() {
       <header className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-lg bg-black flex items-center justify-center">
-            <span className="text-white text-xs font-bold">QR</span>
+            <span className="text-white text-xs font-bold">UB</span>
           </div>
-          <h1 className="text-lg font-bold">Admin Dashboard</h1>
+          <h1 className="text-lg font-bold">U-bike Admin</h1>
         </div>
         <button onClick={logout} className="flex items-center gap-2 text-sm text-gray-500 hover:text-black transition">
           <LogOut size={16} /> Logout
