@@ -25,16 +25,41 @@ module.exports.registerCaptain = asyncHandler(async (req, res) => {
     documents?.nationalIdNumber, documents?.licenseNumber,
   );
 
-  // Save KYC record to shared kyc_documents table for admin review
-  if (captain && (documents?.nationalIdNumber || documents?.licenseNumber)) {
+  // Upload KYC photos to kyc-documents storage bucket and save record
+  if (captain) {
+    let nationalIdUrl = documents?.nationalIdNumber || '';
+    let licenseUrl = documents?.licenseNumber || '';
+
+    try {
+      if (documents?.nationalIdPhoto) {
+        const base64 = documents.nationalIdPhoto.replace(/^data:image\/\w+;base64,/, '');
+        const buffer = Buffer.from(base64, 'base64');
+        const ext = documents.nationalIdPhoto.match(/^data:image\/(\w+);/)?.[1] || 'jpg';
+        const path = `${captain._id}/national_id.${ext}`;
+        await supabase.storage.from('kyc-documents').upload(path, buffer, { contentType: `image/${ext}`, upsert: true });
+        nationalIdUrl = path;
+      }
+      if (documents?.licensePhoto) {
+        const base64 = documents.licensePhoto.replace(/^data:image\/\w+;base64,/, '');
+        const buffer = Buffer.from(base64, 'base64');
+        const ext = documents.licensePhoto.match(/^data:image\/(\w+);/)?.[1] || 'jpg';
+        const path = `${captain._id}/license.${ext}`;
+        await supabase.storage.from('kyc-documents').upload(path, buffer, { contentType: `image/${ext}`, upsert: true });
+        licenseUrl = path;
+      }
+    } catch (uploadErr) {
+      console.error('[KYC] Photo upload error:', uploadErr.message);
+    }
+
+    // Save KYC record to kyc_documents table for admin review
     await supabase.from('kyc_documents').upsert({
       user_id: captain._id,
       plate_number: vehicle.number,
-      national_id_url: documents?.nationalIdNumber || '',
-      license_url: documents?.licenseNumber || '',
+      national_id_url: nationalIdUrl,
+      license_url: licenseUrl,
       status: 'pending',
       submitted_at: new Date().toISOString(),
-    }).catch(() => {}); // non-fatal if kyc_documents table doesn't exist yet
+    }).catch((e) => console.error('[KYC] DB record error:', e.message));
   }
 
   res.status(201).json({
