@@ -39,6 +39,9 @@ function enrich(row) {
       ltd: row.location_lat || 0,
       lng: row.location_lng || 0,
     },
+    approvalStatus: row.approval_status || 'pending',
+    rejectionReason: row.rejection_reason || '',
+    registrationPaymentPaid: row.registration_payment_paid || false,
     select(_) { return this; },
     populate(_) { return this; },
 

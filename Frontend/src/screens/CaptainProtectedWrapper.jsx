@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { useCaptain } from "../contexts/CaptainContext";
 import VerifyEmail from "../components/VerifyEmail";
 import Loading from "./Loading";
+import CaptainPendingApproval from "./CaptainPendingApproval";
 
 function CaptainProtectedWrapper({ children }) {
   const token = localStorage.getItem("token");
@@ -12,6 +13,7 @@ function CaptainProtectedWrapper({ children }) {
 
   const [loading, setLoading] = useState(true);
   const [isVerified, setIsVerified] = useState(null);
+  const [approvalStatus, setApprovalStatus] = useState(null);
 
   useEffect(() => {
     if (!token) {
@@ -21,34 +23,33 @@ function CaptainProtectedWrapper({ children }) {
 
     axios
       .get(`${import.meta.env.VITE_SERVER_URL}/captain/profile`, {
-        headers: {
-          token: token,
-        },
+        headers: { token },
       })
       .then((response) => {
         if (response.status === 200) {
-          const captain = response.data.captain;
-          setCaptain(captain);
-          localStorage.setItem(
-            "userData",
-            JSON.stringify({ type: "captain", data: captain, }));
+          const captainData = response.data.captain;
+          setCaptain(captainData);
+          localStorage.setItem("userData", JSON.stringify({ type: "captain", data: captainData }));
+          setIsVerified(captainData.emailVerified);
+          setApprovalStatus(captainData.approvalStatus || "pending");
         }
-        setIsVerified(captain.emailVerified)
       })
-      .catch((err) => {
+      .catch(() => {
         localStorage.removeItem("token");
         localStorage.removeItem("userData");
         navigate("/captain/login");
       })
-      .finally(() => {
-        setLoading(false);
-      });
+      .finally(() => setLoading(false));
   }, [token]);
 
   if (loading) return <Loading />;
 
   if (isVerified === false) {
     return <VerifyEmail user={captain} role={"captain"} />;
+  }
+
+  if (approvalStatus === "pending" || approvalStatus === "rejected") {
+    return <CaptainPendingApproval captain={captain} />;
   }
 
   return <>{children}</>;

@@ -35,9 +35,19 @@ CREATE TABLE IF NOT EXISTS qr_captains (
   location_lat     FLOAT DEFAULT 0,
   location_lng     FLOAT DEFAULT 0,
   email_verified   BOOLEAN DEFAULT false,
+  approval_status  TEXT DEFAULT 'pending' CHECK (approval_status IN ('pending','approved','rejected')),
+  rejection_reason TEXT DEFAULT '',
+  registration_payment_ref  TEXT DEFAULT '',
+  registration_payment_paid BOOLEAN DEFAULT false,
   created_at       TIMESTAMPTZ DEFAULT now(),
   updated_at       TIMESTAMPTZ DEFAULT now()
 );
+
+-- If qr_captains already exists, add the new columns:
+ALTER TABLE qr_captains ADD COLUMN IF NOT EXISTS approval_status TEXT DEFAULT 'pending' CHECK (approval_status IN ('pending','approved','rejected'));
+ALTER TABLE qr_captains ADD COLUMN IF NOT EXISTS rejection_reason TEXT DEFAULT '';
+ALTER TABLE qr_captains ADD COLUMN IF NOT EXISTS registration_payment_ref TEXT DEFAULT '';
+ALTER TABLE qr_captains ADD COLUMN IF NOT EXISTS registration_payment_paid BOOLEAN DEFAULT false;
 
 CREATE TABLE IF NOT EXISTS qr_rides (
   id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -63,6 +73,22 @@ CREATE TABLE IF NOT EXISTS qr_blacklist_tokens (
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
+CREATE TABLE IF NOT EXISTS kyc_documents (
+  id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id        UUID NOT NULL,
+  plate_number   TEXT DEFAULT '',
+  national_id_url TEXT DEFAULT '',
+  license_url    TEXT DEFAULT '',
+  selfie_url     TEXT DEFAULT '',
+  status         TEXT DEFAULT 'pending' CHECK (status IN ('pending','approved','rejected')),
+  submitted_at   TIMESTAMPTZ DEFAULT now(),
+  reviewed_at    TIMESTAMPTZ,
+  created_at     TIMESTAMPTZ DEFAULT now()
+);
+
+-- If kyc_documents already exists without selfie_url, add the column:
+ALTER TABLE kyc_documents ADD COLUMN IF NOT EXISTS selfie_url TEXT DEFAULT '';
+
 -- Geospatial RPC: find active captains within radius using Haversine formula
 CREATE OR REPLACE FUNCTION qr_captains_in_radius(
   p_lat float, p_lng float, p_radius_km float, p_vehicle_type text
@@ -71,6 +97,7 @@ RETURNS SETOF qr_captains
 LANGUAGE sql STABLE AS $$
   SELECT * FROM qr_captains
   WHERE status = 'active'
+    AND approval_status = 'approved'
     AND vehicle_type = p_vehicle_type
     AND (
       6371 * acos(

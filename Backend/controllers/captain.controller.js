@@ -4,6 +4,10 @@ const captainService = require("../services/captain.service");
 const { validationResult } = require("express-validator");
 const blacklistTokenModel = require("../models/blacklistToken.model");
 const supabase = require("../config/supabase");
+const axios = require("axios");
+
+const PAYSTACK_BASE = 'https://api.paystack.co';
+const REGISTRATION_FEE_KOBO = 200000; // KES 2000
 
 module.exports.registerCaptain = asyncHandler(async (req, res) => {
   const errors = validationResult(req);
@@ -11,7 +15,29 @@ module.exports.registerCaptain = asyncHandler(async (req, res) => {
     return res.status(400).json(errors.array());
   }
 
-  const { fullname, email, password, phone, vehicle, documents } = req.body;
+  const { fullname, email, password, phone, vehicle, documents, paymentReference } = req.body;
+
+  // Verify registration payment (skip only in explicit dev mode with env flag)
+  if (process.env.SKIP_PAYMENT_CHECK !== 'true') {
+    if (!paymentReference) {
+      return res.status(400).json({ message: "Payment required to register. Please complete the KES 2,000 registration fee." });
+    }
+    try {
+      const verify = await axios.get(`${PAYSTACK_BASE}/transaction/verify/${paymentReference}`, {
+        headers: { Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}` },
+      });
+      const tx = verify.data.data;
+      if (tx.status !== 'success') {
+        return res.status(400).json({ message: "Payment not successful. Please complete payment before registering." });
+      }
+      if (tx.amount < REGISTRATION_FEE_KOBO) {
+        return res.status(400).json({ message: "Incorrect payment amount. Registration fee is KES 2,000." });
+      }
+    } catch (payErr) {
+      console.error('[Register] Payment verification error:', payErr.message);
+      return res.status(400).json({ message: "Could not verify payment. Please try again or contact support." });
+    }
+  }
 
   const alreadyExists = await captainModel.findOne({ email });
   if (alreadyExists) {
@@ -27,26 +53,23 @@ module.exports.registerCaptain = asyncHandler(async (req, res) => {
 
   // Upload KYC photos to kyc-documents storage bucket and save record
   if (captain) {
-    let nationalIdUrl = documents?.nationalIdNumber || '';
-    let licenseUrl = documents?.licenseNumber || '';
+    let nationalIdUrl = '';
+    let licenseUrl = '';
+    let selfieUrl = '';
+
+    const uploadBase64 = async (dataUrl, filename) => {
+      const base64 = dataUrl.replace(/^data:image\/\w+;base64,/, '');
+      const buffer = Buffer.from(base64, 'base64');
+      const ext = dataUrl.match(/^data:image\/(\w+);/)?.[1] || 'jpg';
+      const storagePath = `${captain._id}/${filename}.${ext}`;
+      await supabase.storage.from('kyc-documents').upload(storagePath, buffer, { contentType: `image/${ext}`, upsert: true });
+      return storagePath;
+    };
 
     try {
-      if (documents?.nationalIdPhoto) {
-        const base64 = documents.nationalIdPhoto.replace(/^data:image\/\w+;base64,/, '');
-        const buffer = Buffer.from(base64, 'base64');
-        const ext = documents.nationalIdPhoto.match(/^data:image\/(\w+);/)?.[1] || 'jpg';
-        const path = `${captain._id}/national_id.${ext}`;
-        await supabase.storage.from('kyc-documents').upload(path, buffer, { contentType: `image/${ext}`, upsert: true });
-        nationalIdUrl = path;
-      }
-      if (documents?.licensePhoto) {
-        const base64 = documents.licensePhoto.replace(/^data:image\/\w+;base64,/, '');
-        const buffer = Buffer.from(base64, 'base64');
-        const ext = documents.licensePhoto.match(/^data:image\/(\w+);/)?.[1] || 'jpg';
-        const path = `${captain._id}/license.${ext}`;
-        await supabase.storage.from('kyc-documents').upload(path, buffer, { contentType: `image/${ext}`, upsert: true });
-        licenseUrl = path;
-      }
+      if (documents?.nationalIdPhoto) nationalIdUrl = await uploadBase64(documents.nationalIdPhoto, 'national_id');
+      if (documents?.licensePhoto)    licenseUrl    = await uploadBase64(documents.licensePhoto,    'license');
+      if (documents?.selfiePhoto)     selfieUrl     = await uploadBase64(documents.selfiePhoto,     'selfie');
     } catch (uploadErr) {
       console.error('[KYC] Photo upload error:', uploadErr.message);
     }
@@ -57,14 +80,66 @@ module.exports.registerCaptain = asyncHandler(async (req, res) => {
       plate_number: vehicle.number,
       national_id_url: nationalIdUrl,
       license_url: licenseUrl,
+      selfie_url: selfieUrl,
       status: 'pending',
       submitted_at: new Date().toISOString(),
     }).catch((e) => console.error('[KYC] DB record error:', e.message));
+
+    // Save payment reference on the captain record
+    if (paymentReference) {
+      await supabase.from('qr_captains').update({
+        registration_payment_ref: paymentReference,
+        registration_payment_paid: true,
+      }).eq('id', captain._id)
+        .catch((e) => console.error('[KYC] Payment ref save error:', e.message));
+    }
   }
 
   res.status(201).json({
     message: "Registration successful! Please check your email to verify your account before logging in.",
   });
+});
+
+module.exports.verifyFace = asyncHandler(async (req, res) => {
+  const { image } = req.body;
+  if (!image) return res.status(400).json({ message: "Image required", faceDetected: false });
+
+  try {
+    const base64 = image.replace(/^data:image\/\w+;base64,/, '');
+
+    const visionRes = await fetch(
+      `https://vision.googleapis.com/v1/images:annotate?key=${process.env.GOOGLE_MAPS_API}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          requests: [{
+            image: { content: base64 },
+            features: [{ type: 'FACE_DETECTION', maxResults: 5 }],
+          }],
+        }),
+      }
+    );
+
+    const visionData = await visionRes.json();
+    const faces = visionData.responses?.[0]?.faceAnnotations || [];
+
+    if (faces.length === 0) {
+      return res.json({ faceDetected: false, message: "No face detected. Please ensure your face is clearly visible and well-lit." });
+    }
+
+    const face = faces[0];
+    const blurry = face.blurredLikelihood === 'VERY_LIKELY' || face.blurredLikelihood === 'LIKELY';
+    if (blurry) {
+      return res.json({ faceDetected: false, message: "Image is blurry. Please take the photo in better lighting." });
+    }
+
+    res.json({ faceDetected: true, faceCount: faces.length });
+  } catch (err) {
+    console.error('[Vision] Face detection error:', err.message);
+    // Fail open — accept the selfie for manual review if Vision API is unavailable
+    res.json({ faceDetected: true, message: "Verification service unavailable; selfie accepted for manual review." });
+  }
 });
 
 module.exports.verifyEmail = asyncHandler(async (req, res) => {
