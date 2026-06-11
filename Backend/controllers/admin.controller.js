@@ -3,6 +3,36 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
 const supabase = require('../config/supabase');
 
+// One-time setup: creates the first admin account. Disabled once any admin exists.
+module.exports.adminSetup = asyncHandler(async (req, res) => {
+  const { email, password, name, setupSecret } = req.body;
+
+  if (setupSecret !== (process.env.ADMIN_SETUP_SECRET || 'ubike-setup-2024')) {
+    return res.status(403).json({ message: 'Invalid setup secret' });
+  }
+
+  // Check if any admin already exists
+  const { data: existing } = await supabase.from('qr_admins').select('id').limit(1).maybeSingle();
+  if (existing) {
+    return res.status(400).json({ message: 'Admin already exists. Setup is disabled.' });
+  }
+
+  if (!email || !password || password.length < 8) {
+    return res.status(400).json({ message: 'Email and password (min 8 chars) required' });
+  }
+
+  const password_hash = await bcrypt.hash(password, 12);
+  const { data, error } = await supabase.from('qr_admins').insert({
+    email: email.toLowerCase().trim(),
+    password_hash,
+    name: name || 'Super Admin',
+  }).select('id, email, name').single();
+
+  if (error) return res.status(500).json({ message: error.message });
+
+  res.json({ message: 'Admin created successfully', admin: data });
+});
+
 module.exports.adminLogin = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
   if (!email || !password) return res.status(400).json({ message: 'Email and password required' });

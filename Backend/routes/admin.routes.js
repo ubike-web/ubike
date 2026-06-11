@@ -4,6 +4,8 @@ const adminController = require('../controllers/admin.controller');
 const { authAdmin } = require('../middlewares/admin.middleware');
 const { body } = require('express-validator');
 
+router.post('/setup', adminController.adminSetup);
+
 router.post('/login',
   body('email').isEmail().withMessage('Valid email required'),
   body('password').notEmpty().withMessage('Password required'),
