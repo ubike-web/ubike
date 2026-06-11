@@ -1,22 +1,34 @@
 const asyncHandler = require('express-async-handler');
 const jwt = require('jsonwebtoken');
+const bcrypt = require('bcrypt');
 const supabase = require('../config/supabase');
 
 module.exports.adminLogin = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
   if (!email || !password) return res.status(400).json({ message: 'Email and password required' });
 
-  if (email !== process.env.ADMIN_EMAIL || password !== process.env.ADMIN_PASSWORD) {
+  const { data: admin, error } = await supabase
+    .from('qr_admins')
+    .select('*')
+    .eq('email', email.toLowerCase().trim())
+    .maybeSingle();
+
+  if (error || !admin) {
+    return res.status(401).json({ message: 'Invalid admin credentials' });
+  }
+
+  const valid = await bcrypt.compare(password, admin.password_hash);
+  if (!valid) {
     return res.status(401).json({ message: 'Invalid admin credentials' });
   }
 
   const token = jwt.sign(
-    { role: 'admin', email },
+    { role: 'admin', email: admin.email, adminId: admin.id },
     process.env.ADMIN_JWT_SECRET || process.env.JWT_SECRET,
     { expiresIn: '24h' }
   );
 
-  res.json({ token });
+  res.json({ token, admin: { id: admin.id, email: admin.email, name: admin.name } });
 });
 
 module.exports.listCaptains = asyncHandler(async (req, res) => {

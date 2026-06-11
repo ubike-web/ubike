@@ -89,6 +89,14 @@ CREATE TABLE IF NOT EXISTS kyc_documents (
 -- If kyc_documents already exists without selfie_url, add the column:
 ALTER TABLE kyc_documents ADD COLUMN IF NOT EXISTS selfie_url TEXT DEFAULT '';
 
+CREATE TABLE IF NOT EXISTS qr_admins (
+  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  email         TEXT UNIQUE NOT NULL,
+  password_hash TEXT NOT NULL,
+  name          TEXT DEFAULT 'Admin',
+  created_at    TIMESTAMPTZ DEFAULT now()
+);
+
 -- Geospatial RPC: find active captains within radius using Haversine formula
 CREATE OR REPLACE FUNCTION qr_captains_in_radius(
   p_lat float, p_lng float, p_radius_km float, p_vehicle_type text
