@@ -5,6 +5,10 @@ const userModel = require('../models/user.model');
 const supabase = require('../config/supabase');
 const { sendMessageToSocketId } = require('../socket');
 const crypto = require('crypto');
+const axios = require('axios');
+
+const PAYSTACK_SECRET = process.env.PAYSTACK_SECRET_KEY;
+const PAYSTACK_BASE = 'https://api.paystack.co';
 
 const BASE_FARE = 80;
 const PER_KM_RATE = 30;
@@ -36,8 +40,21 @@ module.exports.getErrandFare = asyncHandler(async (req, res) => {
 });
 
 module.exports.createErrand = asyncHandler(async (req, res) => {
-  const { pickup, destination, itemName, itemDescription } = req.body;
+  const { pickup, destination, itemName, itemDescription, paymentReference } = req.body;
   if (!pickup || !destination) return res.status(400).json({ message: 'Pickup and destination are required' });
+
+  // Verify upfront payment
+  if (process.env.SKIP_PAYMENT_CHECK !== 'true') {
+    if (!paymentReference) return res.status(400).json({ message: 'Payment required to request an errand' });
+    try {
+      const verify = await axios.get(`${PAYSTACK_BASE}/transaction/verify/${paymentReference}`, {
+        headers: { Authorization: `Bearer ${PAYSTACK_SECRET}` },
+      });
+      if (verify.data.data.status !== 'success') return res.status(400).json({ message: 'Payment not successful' });
+    } catch {
+      return res.status(400).json({ message: 'Could not verify payment. Try again.' });
+    }
+  }
 
   const distTime = await mapService.getDistanceTime(pickup, destination);
   const fare = calcFare(distTime.distance.value, distTime.duration.value);
@@ -54,6 +71,11 @@ module.exports.createErrand = asyncHandler(async (req, res) => {
     duration: distTime.duration.value,
     otp,
   });
+
+  // Mark payment on errand record
+  if (paymentReference) {
+    await supabase.from('qr_errands').update({ payment_ref: paymentReference, payment_paid: true }).eq('id', errand._id);
+  }
 
   // Find nearby active bike captains in errands mode
   let pickupCoords;
@@ -150,6 +172,22 @@ module.exports.completeErrand = asyncHandler(async (req, res) => {
   const user = await userModel.findOne({ _id: errand.user_id });
   if (user?.socketId) {
     sendMessageToSocketId(user.socketId, { event: 'errand-completed', data: updated });
+  }
+
+  // Credit captain wallet with full errand fare
+  const captainId = req.captain._id;
+  const fullFare = errand.fare;
+  try {
+    const { data: wallet } = await supabase.from('qr_captain_wallets').select('*').eq('captain_id', captainId).maybeSingle();
+    if (wallet) {
+      await supabase.from('qr_captain_wallets').update({ balance: wallet.balance + fullFare, total_earned: wallet.total_earned + fullFare, updated_at: new Date().toISOString() }).eq('captain_id', captainId);
+    } else {
+      await supabase.from('qr_captain_wallets').insert({ captain_id: captainId, balance: fullFare, pending: 0, total_earned: fullFare });
+    }
+    await supabase.from('qr_captain_transactions').insert({ captain_id: captainId, amount: fullFare, type: 'payout', description: `Errand: ${errand.pickup?.split(',')[0]} → ${errand.destination?.split(',')[0]}` });
+    sendMessageToSocketId(req.captain.socketId, { event: 'payment-received', data: { amount: fullFare, message: `KES ${fullFare} credited for errand delivery` } });
+  } catch (walletErr) {
+    console.error('[Wallet] errand credit error:', walletErr.message);
   }
 
   res.json({ errand: updated, message: 'Errand delivered successfully' });

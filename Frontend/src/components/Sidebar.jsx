@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-
-import { ChevronRight, CircleUserRound, History, KeyRound, Menu, Wallet, X } from "lucide-react";
+import { ChevronRight, CircleUserRound, History, KeyRound, Menu, Wallet, X, Bell } from "lucide-react";
+import { getUnreadCount } from "../screens/NotificationsScreen";
 import Button from "./Button";
 import axios from "axios";
 import { Link, useNavigate } from "react-router-dom";
@@ -9,12 +9,16 @@ import Console from "../utils/console";
 function Sidebar() {
   const token = localStorage.getItem("token");
   const [showSidebar, setShowSidebar] = useState(false);
-
   const [newUser, setNewUser] = useState({});
+  const [unread, setUnread] = useState(0);
 
   useEffect(() => {
     const userData = JSON.parse(localStorage.getItem("userData"));
     setNewUser(userData);
+    setUnread(getUnreadCount());
+    const handler = () => setUnread(getUnreadCount());
+    window.addEventListener("ubike-notification", handler);
+    return () => window.removeEventListener("ubike-notification", handler);
   }, []);
 
   const navigate = useNavigate();
@@ -101,19 +105,31 @@ function Sidebar() {
             </div>
           </Link>
 
-          {newUser?.type === "user" && (
-            <Link
-              to="/user/wallet"
-              className="flex items-center justify-between py-4 cursor-pointer hover:bg-zinc-100 rounded-xl px-3"
-            >
-              <div className="flex gap-3">
-                <Wallet /> <h1>Wallet</h1>
-              </div>
-              <div>
-                <ChevronRight />
-              </div>
-            </Link>
-          )}
+          <Link
+            to={`/${newUser?.type === "user" ? "user" : "captain"}/wallet`}
+            className="flex items-center justify-between py-4 cursor-pointer hover:bg-zinc-100 rounded-xl px-3"
+          >
+            <div className="flex gap-3">
+              <Wallet /> <h1>{newUser?.type === "user" ? "Wallet" : "Earnings"}</h1>
+            </div>
+            <ChevronRight />
+          </Link>
+
+          <Link
+            to="/notifications"
+            className="flex items-center justify-between py-4 cursor-pointer hover:bg-zinc-100 rounded-xl px-3"
+          >
+            <div className="flex gap-3 items-center">
+              <Bell />
+              <h1>Notifications</h1>
+              {unread > 0 && (
+                <span className="bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-semibold">
+                  {unread > 9 ? "9+" : unread}
+                </span>
+              )}
+            </div>
+            <ChevronRight />
+          </Link>
 
           <Link
             to={`/${newUser?.type}/reset-password?token=${token}`}

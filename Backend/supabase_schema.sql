@@ -117,6 +117,49 @@ CREATE TABLE IF NOT EXISTS qr_errands (
   updated_at       TIMESTAMPTZ DEFAULT now()
 );
 
+-- User payment transactions
+CREATE TABLE IF NOT EXISTS qr_transactions (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id     UUID REFERENCES qr_users(id) ON DELETE SET NULL,
+  ride_id     UUID REFERENCES qr_rides(id) ON DELETE SET NULL,
+  amount      FLOAT NOT NULL,
+  half        TEXT CHECK (half IN ('first','second','topup')),
+  reference   TEXT NOT NULL,
+  status      TEXT DEFAULT 'success',
+  created_at  TIMESTAMPTZ DEFAULT now()
+);
+
+-- Captain wallet balances
+CREATE TABLE IF NOT EXISTS qr_captain_wallets (
+  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  captain_id    UUID UNIQUE REFERENCES qr_captains(id) ON DELETE CASCADE,
+  balance       FLOAT DEFAULT 0,
+  pending       FLOAT DEFAULT 0,
+  total_earned  FLOAT DEFAULT 0,
+  updated_at    TIMESTAMPTZ DEFAULT now()
+);
+
+-- Captain transaction history
+CREATE TABLE IF NOT EXISTS qr_captain_transactions (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  captain_id  UUID REFERENCES qr_captains(id) ON DELETE SET NULL,
+  ride_id     UUID REFERENCES qr_rides(id) ON DELETE SET NULL,
+  amount      FLOAT NOT NULL,
+  type        TEXT CHECK (type IN ('escrow','payout','refund')),
+  description TEXT DEFAULT '',
+  created_at  TIMESTAMPTZ DEFAULT now()
+);
+
+-- Add payment columns to rides if not present
+ALTER TABLE qr_rides ADD COLUMN IF NOT EXISTS first_payment_ref  TEXT DEFAULT '';
+ALTER TABLE qr_rides ADD COLUMN IF NOT EXISTS first_payment_paid BOOLEAN DEFAULT false;
+ALTER TABLE qr_rides ADD COLUMN IF NOT EXISTS second_payment_ref  TEXT DEFAULT '';
+ALTER TABLE qr_rides ADD COLUMN IF NOT EXISTS second_payment_paid BOOLEAN DEFAULT false;
+
+-- Add payment column to errands
+ALTER TABLE qr_errands ADD COLUMN IF NOT EXISTS payment_ref  TEXT DEFAULT '';
+ALTER TABLE qr_errands ADD COLUMN IF NOT EXISTS payment_paid BOOLEAN DEFAULT false;
+
 -- Geospatial RPC: find active captains within radius using Haversine formula
 CREATE OR REPLACE FUNCTION qr_captains_in_radius(
   p_lat float, p_lng float, p_radius_km float, p_vehicle_type text

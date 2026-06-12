@@ -177,8 +177,19 @@ module.exports.confirmRide = async (req, res) => {
       data: ride,
     });
 
-    // TODO: Remove ride from other captains
-    // Implement logic here, maybe emit an event or update captain listings
+    // Credit captain's pending wallet with the first-half escrow amount
+    const firstHalf = Math.ceil(ride.fare / 2);
+    try {
+      const { data: wallet } = await supabase.from('qr_captain_wallets').select('*').eq('captain_id', req.captain._id).maybeSingle();
+      if (wallet) {
+        await supabase.from('qr_captain_wallets').update({ pending: wallet.pending + firstHalf, updated_at: new Date().toISOString() }).eq('captain_id', req.captain._id);
+      } else {
+        await supabase.from('qr_captain_wallets').insert({ captain_id: req.captain._id, pending: firstHalf, balance: 0, total_earned: 0 });
+      }
+      await supabase.from('qr_captain_transactions').insert({ captain_id: req.captain._id, ride_id: rideId, amount: firstHalf, type: 'escrow', description: `Ride ${ride.pickup?.split(',')[0]} → ${ride.destination?.split(',')[0]} · 1st half held` });
+    } catch (walletErr) {
+      console.error('[Wallet] pending credit error:', walletErr.message);
+    }
 
     return res.status(200).json(ride);
   } catch (err) {

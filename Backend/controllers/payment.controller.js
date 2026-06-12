@@ -116,6 +116,8 @@ module.exports.confirmSecond = async (req, res) => {
       return res.status(400).json({ message: 'Payment not successful' });
     }
 
+    const { data: rideRow } = await supabase.from('qr_rides').select('*').eq('id', rideId).maybeSingle();
+
     await supabase.from('qr_rides').update({
       second_payment_ref: reference,
       second_payment_paid: true,
@@ -131,7 +133,64 @@ module.exports.confirmSecond = async (req, res) => {
       status: 'success',
     });
 
+    // Release full fare to captain wallet
+    if (rideRow?.captain_id) {
+      const fullFare = rideRow.fare;
+      const firstHalf = Math.ceil(fullFare / 2);
+      const { data: wallet } = await supabase.from('qr_captain_wallets').select('*').eq('captain_id', rideRow.captain_id).maybeSingle();
+      if (wallet) {
+        await supabase.from('qr_captain_wallets').update({
+          balance: wallet.balance + fullFare,
+          pending: Math.max(0, wallet.pending - firstHalf),
+          total_earned: wallet.total_earned + fullFare,
+          updated_at: new Date().toISOString(),
+        }).eq('captain_id', rideRow.captain_id);
+      } else {
+        await supabase.from('qr_captain_wallets').insert({ captain_id: rideRow.captain_id, balance: fullFare, pending: 0, total_earned: fullFare });
+      }
+      await supabase.from('qr_captain_transactions').insert({
+        captain_id: rideRow.captain_id, ride_id: rideId, amount: fullFare, type: 'payout',
+        description: `${rideRow.pickup?.split(',')[0]} → ${rideRow.destination?.split(',')[0]} · full fare`,
+      });
+      // Notify captain
+      const { data: captainRow } = await supabase.from('qr_captains').select('socket_id').eq('id', rideRow.captain_id).maybeSingle();
+      if (captainRow?.socket_id) {
+        sendMessageToSocketId(captainRow.socket_id, { event: 'payment-received', data: { amount: fullFare, rideId, message: `KES ${fullFare} credited to your wallet` } });
+      }
+    }
+
     return res.status(200).json({ message: 'Second payment successful' });
+  } catch (err) {
+    return res.status(500).json({ message: err.message });
+  }
+};
+
+module.exports.topup = async (req, res) => {
+  const { reference, amount } = req.body;
+  if (!reference) return res.status(400).json({ message: 'reference required' });
+  try {
+    const verify = await axios.get(`${PAYSTACK_BASE}/transaction/verify/${reference}`, {
+      headers: { Authorization: `Bearer ${PAYSTACK_SECRET}` },
+    });
+    if (verify.data.data.status !== 'success') return res.status(400).json({ message: 'Payment not successful' });
+    await supabase.from('qr_transactions').insert({ user_id: req.user._id, amount, half: 'topup', reference, status: 'success' });
+    return res.status(200).json({ message: 'Top-up successful' });
+  } catch (err) {
+    return res.status(500).json({ message: err.message });
+  }
+};
+
+module.exports.getCaptainWallet = async (req, res) => {
+  const captainId = req.captain._id;
+  try {
+    const { data: wallet } = await supabase.from('qr_captain_wallets').select('*').eq('captain_id', captainId).maybeSingle();
+    const { data: txns } = await supabase.from('qr_captain_transactions').select('*, ride:qr_rides(pickup,destination,vehicle,fare)').eq('captain_id', captainId).order('created_at', { ascending: false }).limit(50);
+    return res.status(200).json({
+      balance: wallet?.balance || 0,
+      pending: wallet?.pending || 0,
+      total_earned: wallet?.total_earned || 0,
+      transactions: txns || [],
+    });
   } catch (err) {
     return res.status(500).json({ message: err.message });
   }

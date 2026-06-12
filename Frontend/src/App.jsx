@@ -23,6 +23,8 @@ import {
 import AdminLogin from "./screens/admin/AdminLogin";
 import AdminDashboard from "./screens/admin/AdminDashboard";
 import CaptainDetailAdmin from "./screens/admin/CaptainDetailAdmin";
+import CaptainWalletScreen from "./screens/CaptainWalletScreen";
+import NotificationsScreen from "./screens/NotificationsScreen";
 import { logger } from "./utils/logger";
 import { SocketDataContext } from "./contexts/SocketContext";
 import { useEffect, useContext } from "react";
@@ -84,6 +86,8 @@ function AppRouter() {
           <Route path="/captain/edit-profile" element={<CaptainProtectedWrapper><CaptainEditProfile /></CaptainProtectedWrapper>} />
           <Route path="/captain/rides" element={<CaptainProtectedWrapper><RideHistory /></CaptainProtectedWrapper>} />
           <Route path="/user/wallet" element={<UserProtectedWrapper><WalletScreen /></UserProtectedWrapper>} />
+          <Route path="/captain/wallet" element={<CaptainProtectedWrapper><CaptainWalletScreen /></CaptainProtectedWrapper>} />
+          <Route path="/notifications" element={<NotificationsScreen />} />
           <Route path="/user/rate/:rideId" element={<UserProtectedWrapper><RateRiderScreen /></UserProtectedWrapper>} />
           <Route path="/:userType/chat/:rideId" element={<ChatScreen />} />
           <Route path="/:userType/verify-email/" element={<VerifyEmail />} />

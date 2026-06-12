@@ -26,6 +26,20 @@ function initializeSocket(server) {
         location_lng: location.lng,
         updated_at: new Date().toISOString(),
       }).eq('id', userId);
+
+      // Broadcast live location to user with an active ride with this captain
+      try {
+        const { data: activeRide } = await supabase
+          .from('qr_rides')
+          .select('user_id, qr_users!qr_rides_user_id_fkey(socket_id)')
+          .eq('captain_id', userId)
+          .in('status', ['accepted', 'ongoing'])
+          .maybeSingle();
+        const userSocketId = activeRide?.qr_users?.socket_id;
+        if (userSocketId && io) {
+          io.to(userSocketId).emit('captain-location-update', { ltd: location.ltd, lng: location.lng });
+        }
+      } catch (_) {}
     });
 
     socket.on('join-room', (roomId) => {

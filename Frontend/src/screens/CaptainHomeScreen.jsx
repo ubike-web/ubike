@@ -8,6 +8,7 @@ import { NewRide, Sidebar } from "../components";
 import Console from "../utils/console";
 import { useAlert } from "../hooks/useAlert";
 import { Alert } from "../components";
+import { addNotification } from "./NotificationsScreen";
 
 const defaultRideData = {
   user: {
@@ -228,12 +229,18 @@ function CaptainHomeScreen() {
       setShowBtn("accept");
       setNewRide(data);
       setShowNewRidePanel(true);
+      addNotification({ type: "ride", title: "New ride request", body: `${data.pickup?.split(",")[0]} → ${data.destination?.split(",")[0]} · KES ${data.fare}` });
     });
 
     socket.on("ride-cancelled", (data) => {
       Console.log("Ride cancelled", data);
       updateLocation();
       clearRideData();
+      addNotification({ type: "ride", title: "Ride cancelled", body: "The customer cancelled the ride request" });
+    });
+
+    socket.on("payment-received", (data) => {
+      addNotification({ type: "payment", title: "Payment received!", body: data.message || `KES ${data.amount} credited to your wallet` });
     });
   }, [captain]);
 

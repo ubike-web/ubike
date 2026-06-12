@@ -12,9 +12,10 @@ import axios from "axios";
 import debounce from "lodash.debounce";
 import { SocketDataContext } from "../contexts/SocketContext";
 import Console from "../utils/console";
-import { LocateFixed } from "lucide-react";
+import { LocateFixed, Package } from "lucide-react";
 import { usePaystack } from "../hooks/usePaystack";
 import { useNavigate } from "react-router-dom";
+import { addNotification } from "./NotificationsScreen";
 
 function UserHomeScreen() {
   const token = localStorage.getItem("token");
@@ -31,6 +32,14 @@ function UserHomeScreen() {
   const [selectedInput, setSelectedInput] = useState("pickup");
   const [locationSuggestion, setLocationSuggestion] = useState([]);
   const [mapLocation, setMapLocation] = useState("");
+
+  // Errands tab
+  const [activeTab, setActiveTab] = useState("rides");
+  const [errandItem, setErrandItem] = useState("");
+  const [errandDesc, setErrandDesc] = useState("");
+  const [errandFare, setErrandFare] = useState(0);
+  const [errandFareLoading, setErrandFareLoading] = useState(false);
+  const [errandCreated, setErrandCreated] = useState(false);
   const [rideCreated, setRideCreated] = useState(false);
   const [locating, setLocating] = useState(false);
   const [locationDenied, setLocationDenied] = useState(false);
@@ -273,6 +282,59 @@ function UserHomeScreen() {
     setSearchError("");
     setShowSecondPayment(false);
     setCompletedRideId(null);
+    setErrandFare(0);
+    setErrandCreated(false);
+  };
+
+  const getErrandFare = async () => {
+    if (!pickupLocation || !destinationLocation) return;
+    try {
+      setErrandFareLoading(true);
+      const { data } = await axios.get(
+        `${import.meta.env.VITE_SERVER_URL}/errand/fare?pickup=${encodeURIComponent(pickupLocation)}&destination=${encodeURIComponent(destinationLocation)}`,
+        { headers: { token } }
+      );
+      setErrandFare(data.fare);
+    } catch {
+      setSearchError("Could not calculate errand fare. Check your locations.");
+    } finally {
+      setErrandFareLoading(false);
+    }
+  };
+
+  const payAndRequestErrand = async () => {
+    if (!errandItem.trim()) { setSearchError("Please enter the item name."); return; }
+    if (!pickupLocation || !destinationLocation) { setSearchError("Enter pickup and destination."); return; }
+    setPaymentLoading(true);
+    try {
+      await axios.post(
+        `${import.meta.env.VITE_SERVER_URL}/payment/initialize`,
+        { amount: errandFare, email: user.email, description: `U-bike errand – ${errandItem}` },
+        { headers: { token } }
+      );
+      pay({
+        email: user.email,
+        amount: errandFare,
+        onSuccess: async (reference) => {
+          try {
+            await axios.post(
+              `${import.meta.env.VITE_SERVER_URL}/errand/create`,
+              { pickup: pickupLocation, destination: destinationLocation, itemName: errandItem, itemDescription: errandDesc, paymentReference: reference },
+              { headers: { token } }
+            );
+            setErrandCreated(true);
+            addNotification({ type: "errand", title: "Errand requested", body: `Looking for a captain to deliver: ${errandItem}` });
+          } catch (err) {
+            setSearchError("Payment verified but errand creation failed. Contact support.");
+          }
+        },
+        onClose: () => {},
+      });
+    } catch {
+      setSearchError("Could not initialise payment. Try again.");
+    } finally {
+      setPaymentLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -287,15 +349,17 @@ function UserHomeScreen() {
     socket.on("ride-confirmed", (data) => {
       clearTimeout(rideTimeout.current);
       setMapLocation(
-        `https://www.google.com/maps?q=${data.captain.location.coordinates[1]},${data.captain.location.coordinates[0]} to ${pickupLocation}&output=embed`
+        `https://www.google.com/maps?q=${data.captain?.location?.coordinates?.[1] || ''},${data.captain?.location?.coordinates?.[0] || ''}&output=embed`
       );
       setConfirmedRideData(data);
+      addNotification({ type: "ride", title: "Captain on the way!", body: `${data.captain?.fullname?.firstname || "Your captain"} accepted your ride` });
     });
 
     socket.on("ride-started", (data) => {
       setMapLocation(
         `https://www.google.com/maps?q=${data.pickup} to ${data.destination}&output=embed`
       );
+      addNotification({ type: "ride", title: "Ride started", body: `Heading to ${data.destination?.split(",")[0]}` });
     });
 
     socket.on("ride-ended", (data) => {
@@ -306,7 +370,37 @@ function UserHomeScreen() {
       setShowFindTripPanel(false);
       setShowSecondPayment(true);
       localStorage.removeItem("panelDetails");
+      addNotification({ type: "ride", title: "You've arrived!", body: "Please complete your payment to rate your captain" });
     });
+
+    // Live captain location → update map
+    socket.on("captain-location-update", ({ ltd, lng }) => {
+      if (ltd && lng) {
+        setMapLocation(`https://www.google.com/maps?q=${ltd},${lng}&output=embed`);
+      }
+    });
+
+    // Errand events
+    socket.on("errand-confirmed", (data) => {
+      addNotification({ type: "errand", title: "Captain accepted your errand!", body: `${data.captain?.fullname?.firstname || "Captain"} is on the way to pick up your item` });
+    });
+    socket.on("errand-started", () => {
+      addNotification({ type: "errand", title: "Item picked up", body: "Your item is on the way to the destination" });
+    });
+    socket.on("errand-completed", () => {
+      setErrandCreated(false);
+      addNotification({ type: "errand", title: "Errand delivered!", body: "Your item has been successfully delivered" });
+    });
+
+    return () => {
+      socket.off("ride-confirmed");
+      socket.off("ride-started");
+      socket.off("ride-ended");
+      socket.off("captain-location-update");
+      socket.off("errand-confirmed");
+      socket.off("errand-started");
+      socket.off("errand-completed");
+    };
   }, [user]);
 
   useEffect(() => {
@@ -365,7 +459,35 @@ function UserHomeScreen() {
 
       {showFindTripPanel && (
         <div className="absolute b-0 flex flex-col justify-start p-4 pb-2 gap-3 rounded-b-lg bg-white h-fit w-full">
-          <h1 className="text-2xl font-semibold">Find a trip</h1>
+          {/* Tab switcher */}
+          <div className="flex gap-2">
+            <button onClick={() => { setActiveTab("rides"); setSearchError(""); }} className={`flex-1 py-2 rounded-xl text-sm font-semibold transition-colors ${activeTab === "rides" ? "bg-black text-white" : "bg-gray-100 text-gray-600"}`}>
+              Rides
+            </button>
+            <button onClick={() => { setActiveTab("errands"); setSearchError(""); }} className={`flex-1 py-2 rounded-xl text-sm font-semibold transition-colors flex items-center justify-center gap-1.5 ${activeTab === "errands" ? "bg-orange-500 text-white" : "bg-gray-100 text-gray-600"}`}>
+              <Package size={14} /> Errands
+            </button>
+          </div>
+
+          <h1 className="text-2xl font-semibold">{activeTab === "rides" ? "Find a trip" : "Request errand"}</h1>
+
+          {/* Errands-only: item name + description */}
+          {activeTab === "errands" && (
+            <div className="flex flex-col gap-2">
+              <input
+                placeholder="Item name (e.g. Documents, Parcel)"
+                className="w-full bg-zinc-100 px-4 py-3 rounded-lg outline-black text-sm"
+                value={errandItem}
+                onChange={(e) => setErrandItem(e.target.value)}
+              />
+              <input
+                placeholder="Description (optional)"
+                className="w-full bg-zinc-100 px-4 py-3 rounded-lg outline-black text-sm"
+                value={errandDesc}
+                onChange={(e) => setErrandDesc(e.target.value)}
+              />
+            </div>
+          )}
 
           <div className="flex items-center relative w-full h-fit">
             <div className="h-3/5 w-[3px] flex flex-col items-center justify-between bg-black rounded-full absolute mx-5">
@@ -413,12 +535,34 @@ function UserHomeScreen() {
             <p className="text-xs text-red-500 bg-red-50 rounded px-3 py-2">{searchError}</p>
           )}
 
-          {pickupLocation.length > 2 && destinationLocation.length > 2 && (
-            <Button
-              title={"Search"}
-              loading={loading}
-              fun={() => getDistanceAndFare(pickupLocation, destinationLocation)}
-            />
+          {pickupLocation.length > 2 && destinationLocation.length > 2 && activeTab === "rides" && (
+            <Button title={"Search"} loading={loading} fun={() => getDistanceAndFare(pickupLocation, destinationLocation)} />
+          )}
+
+          {activeTab === "errands" && pickupLocation.length > 2 && destinationLocation.length > 2 && !errandCreated && (
+            errandFare > 0 ? (
+              <div className="flex flex-col gap-2">
+                <div className="flex justify-between items-center bg-orange-50 rounded-xl px-4 py-3">
+                  <span className="text-sm text-orange-700">Errand fare</span>
+                  <span className="font-bold text-orange-700">KES {errandFare}</span>
+                </div>
+                <Button
+                  title={`Pay KES ${errandFare} & Request`}
+                  loading={paymentLoading}
+                  fun={payAndRequestErrand}
+                  classes="bg-orange-500"
+                />
+              </div>
+            ) : (
+              <Button title={"Get Fare"} loading={errandFareLoading} fun={getErrandFare} classes="bg-orange-500" />
+            )
+          )}
+
+          {activeTab === "errands" && errandCreated && (
+            <div className="bg-orange-50 rounded-xl p-4 text-center">
+              <p className="font-semibold text-orange-700">Looking for a captain…</p>
+              <p className="text-xs text-orange-500 mt-1">You'll be notified when someone accepts</p>
+            </div>
           )}
 
           <div className="w-full max-h-48 overflow-y-auto">

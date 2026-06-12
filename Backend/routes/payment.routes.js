@@ -27,9 +27,10 @@ router.post('/confirm-second',
   paymentController.confirmSecond
 );
 
-router.get('/wallet',
-  authMiddleware.authUser,
-  paymentController.getWallet
-);
+router.get('/wallet', authMiddleware.authUser, paymentController.getWallet);
+
+router.post('/topup', authMiddleware.authUser, paymentController.topup);
+
+router.get('/captain-wallet', authMiddleware.authCaptain, paymentController.getCaptainWallet);
 
 module.exports = router;
