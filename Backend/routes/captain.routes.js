@@ -34,6 +34,8 @@ router.post("/set-mode",
   captainController.setMode
 );
 
+router.post("/reset-mode", authCaptain, captainController.resetMode);
+
 router.get("/logout", authCaptain, captainController.logoutCaptain);
 
 router.post(

@@ -98,6 +98,25 @@ CREATE TABLE IF NOT EXISTS qr_admins (
   created_at    TIMESTAMPTZ DEFAULT now()
 );
 
+CREATE TABLE IF NOT EXISTS qr_errands (
+  id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id          UUID REFERENCES qr_users(id) ON DELETE SET NULL,
+  captain_id       UUID REFERENCES qr_captains(id) ON DELETE SET NULL,
+  pickup           TEXT NOT NULL,
+  destination      TEXT NOT NULL,
+  item_name        TEXT DEFAULT '',
+  item_description TEXT DEFAULT '',
+  fare             FLOAT NOT NULL DEFAULT 0,
+  distance         FLOAT DEFAULT 0,
+  duration         FLOAT DEFAULT 0,
+  status           TEXT DEFAULT 'pending' CHECK (status IN ('pending','accepted','picked_up','delivered','cancelled')),
+  otp              TEXT NOT NULL DEFAULT '',
+  payment_reference TEXT DEFAULT '',
+  payment_paid     BOOLEAN DEFAULT false,
+  created_at       TIMESTAMPTZ DEFAULT now(),
+  updated_at       TIMESTAMPTZ DEFAULT now()
+);
+
 -- Geospatial RPC: find active captains within radius using Haversine formula
 CREATE OR REPLACE FUNCTION qr_captains_in_radius(
   p_lat float, p_lng float, p_radius_km float, p_vehicle_type text

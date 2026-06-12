@@ -18,6 +18,7 @@ const rideRoutes = require("./routes/ride.routes");
 const mailRoutes = require("./routes/mail.routes");
 const paymentRoutes = require("./routes/payment.routes");
 const adminRoutes = require("./routes/admin.routes");
+const errandRoutes = require("./routes/errand.routes");
 const keepServerRunning = require("./services/active.service");
 const dbStream = require("./services/logging.service");
 require("./config/db");
@@ -56,6 +57,7 @@ app.use("/ride", rideRoutes);
 app.use("/mail", mailRoutes);
 app.use("/payment", paymentRoutes);
 app.use("/admin", adminRoutes);
+app.use("/errand", errandRoutes);
 
 server.listen(PORT, () => {
   console.log("Server is listening on port", PORT);

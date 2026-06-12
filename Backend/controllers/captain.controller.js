@@ -183,6 +183,14 @@ module.exports.setMode = asyncHandler(async (req, res) => {
   res.json({ message: "Mode updated", mode });
 });
 
+module.exports.resetMode = asyncHandler(async (req, res) => {
+  await supabase
+    .from('qr_captains')
+    .update({ active_mode: null, updated_at: new Date().toISOString() })
+    .eq('id', req.captain._id);
+  res.json({ message: 'Mode reset' });
+});
+
 module.exports.logoutCaptain = asyncHandler(async (req, res) => {
   const token = req.cookies.token || req.headers.token;
   res.clearCookie("token");

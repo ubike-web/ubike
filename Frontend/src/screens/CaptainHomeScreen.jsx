@@ -2,7 +2,7 @@ import { useContext, useEffect, useState } from "react";
 import map from "/map.png";
 import axios from "axios";
 import { useCaptain } from "../contexts/CaptainContext";
-import { Phone, User } from "lucide-react";
+import { Phone, User, ArrowLeftRight } from "lucide-react";
 import { SocketDataContext } from "../contexts/SocketContext";
 import { NewRide, Sidebar } from "../components";
 import Console from "../utils/console";
@@ -371,7 +371,7 @@ function CaptainHomeScreen() {
 
             <div className="text-right">
               <p className="text-xs text-gray-500 ">Earnings</p>
-              <h1 className="font-semibold">₹ {earnings.today}</h1>
+              <h1 className="font-semibold">KES {earnings.today}</h1>
             </div>
           </div>
 
@@ -403,7 +403,7 @@ function CaptainHomeScreen() {
             </div>
           </div>
 
-          {/* Car details */}
+          {/* Vehicle details */}
           <div className="flex justify-between border-2 items-center pl-3 py-2 rounded-lg">
             <div>
               <h1 className="text-lg font-semibold leading-6 tracking-tighter ">
@@ -425,6 +425,23 @@ function CaptainHomeScreen() {
               alt="Driver picture"
             />
           </div>
+
+          {/* Switch service (bike captains only) */}
+          {captain?.vehicle?.type === "bike" && (
+            <button
+              onClick={async () => {
+                try {
+                  const token = localStorage.getItem("token");
+                  await axios.post(`${import.meta.env.VITE_SERVER_URL}/captain/reset-mode`, {}, { headers: { token } });
+                } finally {
+                  window.location.reload();
+                }
+              }}
+              className="flex items-center justify-center gap-2 text-sm text-gray-500 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors"
+            >
+              <ArrowLeftRight size={14} /> Switch service
+            </button>
+          )}
         </div>
       )}
 

@@ -15,7 +15,7 @@ function UserProtectedWrapper({ children }) {
 
   useEffect(() => {
     if (!token) {
-      navigate("/login");
+      navigate("/");
       return;
     }
 
@@ -40,7 +40,7 @@ function UserProtectedWrapper({ children }) {
       .catch(() => {
         localStorage.removeItem("token");
         localStorage.removeItem("userData");
-        navigate("/login");
+        navigate("/");
       })
       .finally(() => {
         setLoading(false);

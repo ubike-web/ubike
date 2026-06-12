@@ -6,6 +6,7 @@ import VerifyEmail from "../components/VerifyEmail";
 import Loading from "./Loading";
 import CaptainPendingApproval from "./CaptainPendingApproval";
 import CaptainModeSelect from "./CaptainModeSelect";
+import CaptainErrandsScreen from "./CaptainErrandsScreen";
 
 function CaptainProtectedWrapper({ children }) {
   const token = localStorage.getItem("token");
@@ -20,7 +21,7 @@ function CaptainProtectedWrapper({ children }) {
 
   useEffect(() => {
     if (!token) {
-      navigate("/captain/login");
+      navigate("/");
       return;
     }
 
@@ -42,7 +43,7 @@ function CaptainProtectedWrapper({ children }) {
       .catch(() => {
         localStorage.removeItem("token");
         localStorage.removeItem("userData");
-        navigate("/captain/login");
+        navigate("/");
       })
       .finally(() => setLoading(false));
   }, [token]);
@@ -57,13 +58,17 @@ function CaptainProtectedWrapper({ children }) {
     return <CaptainPendingApproval captain={captain} />;
   }
 
-  // Approved — check if mode needs to be selected
-  // Bike captains must choose between rides or errands
-  // Car / auto captains are rides-only, skip selection
+  // Approved — check if mode needs to be selected (bike only)
   if (approvalStatus === "approved" && vehicleType === "bike" && !activeMode) {
     return <CaptainModeSelect captain={captain} />;
   }
 
+  // Bike captain in errands mode → show errands home screen
+  if (approvalStatus === "approved" && activeMode === "errands") {
+    return <CaptainErrandsScreen />;
+  }
+
+  // Rides mode (all vehicle types) → show children (CaptainHomeScreen)
   return <>{children}</>;
 }
 
