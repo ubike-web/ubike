@@ -20,7 +20,6 @@ import {
   WalletScreen,
   RateRiderScreen,
 } from "./screens/";
-import DownloadApp from "./screens/DownloadApp";
 import InstallBanner from "./components/InstallBanner";
 import AdminLogin from "./screens/admin/AdminLogin";
 import AdminDashboard from "./screens/admin/AdminDashboard";
@@ -81,8 +80,7 @@ function AppRouter() {
         <div className="flex-1 relative overflow-hidden">
         <Routes>
           <Route path="/" element={<GetStarted />} />
-          <Route path="/download" element={<DownloadApp />} />
-          <Route path="/home" element={<UserProtectedWrapper><UserHomeScreen /></UserProtectedWrapper>} />
+<Route path="/home" element={<UserProtectedWrapper><UserHomeScreen /></UserProtectedWrapper>} />
           <Route path="/login" element={<UserLogin />} />
           <Route path="/signup" element={<UserSignup />} />
           <Route path="/user/edit-profile" element={<UserProtectedWrapper><UserEditProfile /></UserProtectedWrapper>} />
