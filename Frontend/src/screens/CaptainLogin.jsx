@@ -33,7 +33,7 @@ function CaptainLogin() {
           type: "captain",
           data: response.data.captain,
         }));
-        navigation("/captain/home");
+        navigation("/captain/home", { replace: true });
       } catch (error) {
         setResponseError(error.response.data.message);
         Console.log(error);

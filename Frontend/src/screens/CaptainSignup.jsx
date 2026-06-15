@@ -3,8 +3,14 @@ import { useForm } from "react-hook-form";
 import { Link, useNavigate } from "react-router-dom";
 import { Button, Heading, Input } from "../components";
 import axios from "axios";
-import { ArrowLeft, ChevronRight, Upload, X } from "lucide-react";
+import { ArrowLeft, ChevronRight, Upload, X, Smartphone } from "lucide-react";
 import Console from "../utils/console";
+
+// Validates a Kenyan M-Pesa number (Safaricom/Airtel): 07xx or 01xx, 10 digits
+const isValidMpesaPhone = (phone) => {
+  const cleaned = phone.replace(/\s/g, "");
+  return /^(07|01)\d{8}$/.test(cleaned);
+};
 
 function FilePicker({ label, hint, value, onChange }) {
   const ref = useRef();
@@ -53,9 +59,16 @@ function CaptainSignup() {
   const [loading, setLoading] = useState(false);
   const [nationalIdPhoto, setNationalIdPhoto] = useState(null);
   const [licensePhoto, setLicensePhoto] = useState(null);
+  const [freeSlots, setFreeSlots] = useState(null); // null = loading, 0 = none, N = available
 
   const { register, formState: { errors }, getValues } = useForm();
   const navigation = useNavigate();
+
+  useEffect(() => {
+    axios.get(`${import.meta.env.VITE_SERVER_URL}/captain/registration-slots`)
+      .then(({ data }) => setFreeSlots(data.freeSlots))
+      .catch(() => setFreeSlots(0));
+  }, []);
 
   const toBase64 = (file) => new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -105,7 +118,7 @@ function CaptainSignup() {
 
       Console.log(captainData);
       await axios.post(`${import.meta.env.VITE_SERVER_URL}/captain/register`, captainData);
-      navigation("/captain/login?registered=true");
+      navigation("/captain/login?registered=true", { replace: true });
     } catch (error) {
       setResponseError(
         error.response?.data?.[0]?.msg ||
@@ -119,7 +132,7 @@ function CaptainSignup() {
     }
   };
 
-  const handlePayAndRegister = async () => {
+  const handleRegister = async () => {
     if (!nationalIdPhoto) { setResponseError("Please upload a photo of your National ID"); return; }
     if (!licensePhoto)    { setResponseError("Please upload a photo of your Driving Licence"); return; }
 
@@ -129,7 +142,27 @@ function CaptainSignup() {
       setPanel(1);
       return;
     }
+    if (!isValidMpesaPhone(data.phone)) {
+      setResponseError("Enter a valid M-Pesa number (07XXXXXXXX or 01XXXXXXXX)");
+      setPanel(1);
+      return;
+    }
 
+    // Re-check slots at submit time (another captain may have taken the last slot)
+    let slotStillFree = false;
+    try {
+      const { data: slotData } = await axios.get(`${import.meta.env.VITE_SERVER_URL}/captain/registration-slots`);
+      slotStillFree = slotData.hasFreeSlot;
+    } catch (_) { /* fall through to paid path */ }
+
+    if (slotStillFree) {
+      // Free slot — generate a traceable reference and register directly (KES 0, no Paystack popup)
+      setLoading(true);
+      await submitRegistration(data, `FREE-SLOT-${Date.now()}`);
+      return;
+    }
+
+    // Paid registration via Paystack
     setLoading(true);
     await loadPaystack();
 
@@ -189,13 +222,41 @@ function CaptainSignup() {
                 <Input label="First name" name="firstname" register={register} error={errors.firstname} />
                 <Input label="Last name" name="lastname" register={register} error={errors.lastname} />
               </div>
-              <Input label="Phone Number" type="number" name="phone" register={register} error={errors.phone} />
+
+              {/* M-Pesa phone field */}
+              <div className="my-2">
+                <div className="flex items-center justify-between mb-1">
+                  <h1 className="font-semibold">M-Pesa Phone Number</h1>
+                  <span className="flex items-center gap-1 text-xs text-green-700 font-medium bg-green-50 px-2 py-0.5 rounded-full border border-green-200">
+                    <Smartphone size={10} /> M-Pesa
+                  </span>
+                </div>
+                <input
+                  {...register("phone")}
+                  type="tel"
+                  placeholder="07XXXXXXXX"
+                  maxLength={10}
+                  className="w-full bg-zinc-100 px-4 py-3 rounded-lg outline-none text-sm my-1"
+                />
+                <p className="text-xs text-zinc-500 -mt-0.5">
+                  Your ride earnings will be sent to this number via M-Pesa automatically
+                </p>
+              </div>
+
               <Input label="Email" type="email" name="email" register={register} error={errors.email} />
               <Input label="Password" type="password" name="password" register={register} error={errors.password} />
               {responseError && <p className="text-sm text-center mb-4 text-red-500">{responseError}</p>}
               <div
                 className="cursor-pointer flex justify-center items-center gap-2 py-3 font-semibold bg-black text-white w-full rounded-lg"
-                onClick={() => setPanel(2)}
+                onClick={() => {
+                  const phone = getValues("phone");
+                  if (!isValidMpesaPhone(phone)) {
+                    setResponseError("Enter a valid M-Pesa number (07XXXXXXXX or 01XXXXXXXX)");
+                    return;
+                  }
+                  setResponseError("");
+                  setPanel(2);
+                }}
               >
                 Next — Vehicle Details <ChevronRight strokeWidth={2.5} />
               </div>
@@ -231,6 +292,22 @@ function CaptainSignup() {
           {panel === 3 && (
             <>
               <ArrowLeft onClick={() => setPanel(2)} className="cursor-pointer -ml-1 mb-4" />
+
+              {/* Free slot banner */}
+              {freeSlots > 0 && (
+                <div className="mb-4 px-4 py-3 rounded-xl bg-green-50 border border-green-200 flex items-start gap-3">
+                  <span className="text-2xl leading-none">🎉</span>
+                  <div>
+                    <p className="font-bold text-green-800 text-sm">Free registration slot available!</p>
+                    <p className="text-green-700 text-xs mt-0.5">
+                      You are one of the first {10} captains — no registration fee required.
+                      Just submit your documents and wait for admin approval.
+                    </p>
+                    <p className="text-green-600 text-xs mt-1 font-medium">{freeSlots} of 10 free slots remaining</p>
+                  </div>
+                </div>
+              )}
+
               <p className="text-sm text-gray-500 mb-4">
                 Your documents are kept private and used only for identity verification by our team.
               </p>
@@ -255,14 +332,20 @@ function CaptainSignup() {
 
               <button
                 type="button"
-                onClick={handlePayAndRegister}
+                onClick={handleRegister}
                 disabled={loading}
-                className="w-full py-3.5 bg-black text-white rounded-xl font-semibold flex flex-col items-center justify-center disabled:opacity-60 transition mt-2"
+                className={`w-full py-3.5 rounded-xl font-semibold flex flex-col items-center justify-center disabled:opacity-60 transition mt-2 text-white ${freeSlots > 0 ? 'bg-green-600' : 'bg-black'}`}
               >
-                {loading ? "Processing…" : "Pay KES 2,000 & Create Account"}
+                {loading
+                  ? "Processing…"
+                  : freeSlots > 0
+                    ? "Submit Documents & Register (Free)"
+                    : "Pay KES 2,000 & Create Account"}
                 {!loading && (
                   <span className="text-xs font-normal opacity-70 mt-0.5">
-                    Registration fee · Secure payment via Paystack
+                    {freeSlots > 0
+                      ? "Free slot · Documents required · Pending admin approval"
+                      : "Registration fee · Secure payment via Paystack"}
                   </span>
                 )}
               </button>

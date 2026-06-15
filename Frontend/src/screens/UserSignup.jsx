@@ -33,7 +33,7 @@ function UserSignup() {
         `${import.meta.env.VITE_SERVER_URL}/user/register`,
         userData
       );
-      navigation("/login?registered=true");
+      navigation("/login?registered=true", { replace: true });
     } catch (error) {
       setResponseError(error.response?.data?.[0]?.msg || error.response?.data?.message || "Registration failed");
       Console.log(error);

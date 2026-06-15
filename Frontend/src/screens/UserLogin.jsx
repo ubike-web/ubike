@@ -33,7 +33,7 @@ function UserLogin() {
           type: "user",
           data: response.data.user,
         }));
-        navigation("/home");
+        navigation("/home", { replace: true });
       } catch (error) {
         setResponseError(error.response.data.message);
         Console.log(error);
