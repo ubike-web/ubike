@@ -21,6 +21,7 @@ import {
   RateRiderScreen,
 } from "./screens/";
 import DownloadApp from "./screens/DownloadApp";
+import InstallBanner from "./components/InstallBanner";
 import AdminLogin from "./screens/admin/AdminLogin";
 import AdminDashboard from "./screens/admin/AdminDashboard";
 import CaptainDetailAdmin from "./screens/admin/CaptainDetailAdmin";
@@ -59,7 +60,7 @@ function AppRouter() {
   // Mobile user/captain app
   return (
     <div className="w-full h-dvh flex items-center">
-      <div className="relative w-full sm:min-w-96 sm:w-96 h-full bg-white overflow-hidden">
+      <div className="relative w-full sm:min-w-96 sm:w-96 h-full bg-white overflow-hidden flex flex-col">
         {/* Force Reset Button to clear data */}
         <div className="absolute top-36 -right-11 opacity-20 hover:opacity-100 z-50 flex items-center p-1 PL-0 gap-1 bg-zinc-50 border-2 border-r-0 border-gray-300 hover:-translate-x-11 rounded-l-md transition-all duration-300">
           <ChevronLeft />
@@ -75,7 +76,9 @@ function AppRouter() {
           </button>
         </div>
 
+        <InstallBanner />
         <LoggingWrapper />
+        <div className="flex-1 relative overflow-hidden">
         <Routes>
           <Route path="/" element={<GetStarted />} />
           <Route path="/download" element={<DownloadApp />} />
@@ -101,6 +104,7 @@ function AppRouter() {
           <Route path="/:userType/reset-password/" element={<ResetPassword />} />
           <Route path="*" element={<Error />} />
         </Routes>
+        </div>
       </div>
       <div className="hidden sm:block w-full h-full bg-[#eae1fe] overflow-hidden select-none border-l-2 border-black">
         <img

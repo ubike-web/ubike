@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ChevronRight, CircleUserRound, Download, History, KeyRound, Menu, Wallet, X, Bell, Package } from "lucide-react";
+import { ChevronRight, CircleUserRound, History, KeyRound, Menu, Wallet, X, Bell, Package } from "lucide-react";
 import { getUnreadCount } from "../screens/NotificationsScreen";
 import Button from "./Button";
 import axios from "axios";
@@ -158,19 +158,6 @@ function Sidebar() {
             </div>
           </Link>
 
-          <Link
-            to="/download"
-            className="flex items-center justify-between py-4 cursor-pointer rounded-xl px-3"
-            style={{ background: 'linear-gradient(135deg, #040F26, #0A2D6E)', marginTop: '4px' }}
-          >
-            <div className="flex gap-3 items-center">
-              <Download color="#42C8F5" />
-              <h1 className="text-white font-semibold">Download App</h1>
-            </div>
-            <span className="text-xs font-bold px-2 py-1 rounded-full" style={{ background: '#42C8F5', color: '#0A1A2E' }}>
-              Android
-            </span>
-          </Link>
         </div>
 
         <Button title={"Logout"} classes={"bg-red-600"} fun={logout} />
