@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ChevronRight, CircleUserRound, History, KeyRound, Menu, Wallet, X, Bell } from "lucide-react";
+import { ChevronRight, CircleUserRound, Download, History, KeyRound, Menu, Wallet, X, Bell, Package } from "lucide-react";
 import { getUnreadCount } from "../screens/NotificationsScreen";
 import Button from "./Button";
 import axios from "axios";
@@ -41,6 +41,9 @@ function Sidebar() {
       localStorage.removeItem("panelDetails");
       localStorage.removeItem("showPanel");
       localStorage.removeItem("showBtn");
+      localStorage.removeItem("errandDetails");
+      localStorage.removeItem("errandStep");
+      localStorage.removeItem("showErrandPanel");
       navigate("/");
     } catch (error) {
       Console.log("Error getting logged out", error);
@@ -105,6 +108,18 @@ function Sidebar() {
             </div>
           </Link>
 
+          {newUser?.type === "captain" && (
+            <Link
+              to="/captain/errands"
+              className="flex items-center justify-between py-4 cursor-pointer hover:bg-zinc-100 rounded-xl px-3"
+            >
+              <div className="flex gap-3">
+                <Package /> <h1>Errand History</h1>
+              </div>
+              <ChevronRight />
+            </Link>
+          )}
+
           <Link
             to={`/${newUser?.type === "user" ? "user" : "captain"}/wallet`}
             className="flex items-center justify-between py-4 cursor-pointer hover:bg-zinc-100 rounded-xl px-3"
@@ -141,6 +156,20 @@ function Sidebar() {
             <div>
               <ChevronRight />
             </div>
+          </Link>
+
+          <Link
+            to="/download"
+            className="flex items-center justify-between py-4 cursor-pointer rounded-xl px-3"
+            style={{ background: 'linear-gradient(135deg, #040F26, #0A2D6E)', marginTop: '4px' }}
+          >
+            <div className="flex gap-3 items-center">
+              <Download color="#42C8F5" />
+              <h1 className="text-white font-semibold">Download App</h1>
+            </div>
+            <span className="text-xs font-bold px-2 py-1 rounded-full" style={{ background: '#42C8F5', color: '#0A1A2E' }}>
+              Android
+            </span>
           </Link>
         </div>
 
