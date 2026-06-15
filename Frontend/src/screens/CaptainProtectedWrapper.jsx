@@ -21,7 +21,7 @@ function CaptainProtectedWrapper({ children }) {
 
   useEffect(() => {
     if (!token) {
-      navigate("/");
+      navigate("/", { replace: true });
       return;
     }
 
@@ -43,7 +43,7 @@ function CaptainProtectedWrapper({ children }) {
       .catch(() => {
         localStorage.removeItem("token");
         localStorage.removeItem("userData");
-        navigate("/");
+        navigate("/", { replace: true });
       })
       .finally(() => setLoading(false));
   }, [token]);

@@ -13,9 +13,9 @@ function GetStarted() {
     const userData = localStorage.getItem("userData");
     if (userData) {
       if (JSON.parse(userData).type == "user") {
-        navigate("/home");
+        navigate("/home", { replace: true });
       } else if (JSON.parse(userData).type == "captain") {
-        navigate("/captain/home");
+        navigate("/captain/home", { replace: true });
       }
     }
     setIsAndroid(/android/i.test(navigator.userAgent));
