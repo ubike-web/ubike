@@ -19,6 +19,17 @@ function GetStarted() {
     }
   }, []);
 
+  return (
+    <div
+      className="flex flex-col justify-between w-full h-full bg-cover bg-center"
+      style={{ backgroundImage: `url(${background})` }}
+    >
+      <img
+        className="h-[120px] object-contain m-4 self-start"
+        src={logo}
+        alt="Logo"
+      />
+
       <div className="flex flex-col bg-white p-4 pb-8 gap-8 rounded-t-lg">
         <h1 className="text-2xl font-semibold">Get started with U-bike</h1>
         <Button
