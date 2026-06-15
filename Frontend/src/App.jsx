@@ -20,11 +20,14 @@ import {
   WalletScreen,
   RateRiderScreen,
 } from "./screens/";
+import DownloadApp from "./screens/DownloadApp";
 import AdminLogin from "./screens/admin/AdminLogin";
 import AdminDashboard from "./screens/admin/AdminDashboard";
 import CaptainDetailAdmin from "./screens/admin/CaptainDetailAdmin";
 import CaptainWalletScreen from "./screens/CaptainWalletScreen";
 import NotificationsScreen from "./screens/NotificationsScreen";
+import CaptainErrandHistory from "./screens/CaptainErrandHistory";
+import ErrandChatScreen from "./screens/ErrandChatScreen";
 import { logger } from "./utils/logger";
 import { SocketDataContext } from "./contexts/SocketContext";
 import { useEffect, useContext } from "react";
@@ -75,6 +78,7 @@ function AppRouter() {
         <LoggingWrapper />
         <Routes>
           <Route path="/" element={<GetStarted />} />
+          <Route path="/download" element={<DownloadApp />} />
           <Route path="/home" element={<UserProtectedWrapper><UserHomeScreen /></UserProtectedWrapper>} />
           <Route path="/login" element={<UserLogin />} />
           <Route path="/signup" element={<UserSignup />} />
@@ -87,7 +91,9 @@ function AppRouter() {
           <Route path="/captain/rides" element={<CaptainProtectedWrapper><RideHistory /></CaptainProtectedWrapper>} />
           <Route path="/user/wallet" element={<UserProtectedWrapper><WalletScreen /></UserProtectedWrapper>} />
           <Route path="/captain/wallet" element={<CaptainProtectedWrapper><CaptainWalletScreen /></CaptainProtectedWrapper>} />
+          <Route path="/captain/errands" element={<CaptainProtectedWrapper><CaptainErrandHistory /></CaptainProtectedWrapper>} />
           <Route path="/notifications" element={<NotificationsScreen />} />
+          <Route path="/errand-chat/:subscriptionId" element={<ErrandChatScreen />} />
           <Route path="/user/rate/:rideId" element={<UserProtectedWrapper><RateRiderScreen /></UserProtectedWrapper>} />
           <Route path="/:userType/chat/:rideId" element={<ChatScreen />} />
           <Route path="/:userType/verify-email/" element={<VerifyEmail />} />
